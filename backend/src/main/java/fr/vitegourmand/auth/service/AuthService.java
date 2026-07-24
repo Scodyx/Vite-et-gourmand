@@ -9,12 +9,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Locale;
+import org.springframework.beans.factory.annotation.Autowired;
+import fr.vitegourmand.common.email.ApplicationEmailService;
 
 @Service
 public class AuthService {
     private final UserRepository users;
     private final PasswordEncoder passwords;
     private final JwtService jwt;
+    @Autowired(required=false) private ApplicationEmailService emails;
     public AuthService(UserRepository users, PasswordEncoder passwords, JwtService jwt) {
         this.users = users; this.passwords = passwords; this.jwt = jwt;
     }
@@ -29,6 +32,7 @@ public class AuthService {
         user.setPostalCode(request.postalCode()); user.setCity(request.city()); user.setCountry(request.country());
         user.setRole(Role.USER);
         users.save(user);
+        if (emails != null) emails.welcome(user.getEmail(), user.getFirstName());
         return token(user);
     }
     public AuthResponse login(LoginRequest request) {

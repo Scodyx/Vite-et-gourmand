@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
+import { BusinessService, OpeningHours } from './core/services/business.service';
 
 @Component({
   selector: 'app-root',
@@ -9,5 +10,9 @@ import { AuthService } from './core/auth/auth.service';
   styleUrl: './app.scss'
 })
 export class App {
-  constructor(protected readonly auth: AuthService) {}
+  protected readonly hours=signal<OpeningHours[]>([]);
+  constructor(protected readonly auth: AuthService, business:BusinessService) {
+    business.publicHours().subscribe({next:value=>this.hours.set(value),error:()=>this.hours.set([])});
+  }
+  protected day(value:string){return ({MONDAY:'Lundi',TUESDAY:'Mardi',WEDNESDAY:'Mercredi',THURSDAY:'Jeudi',FRIDAY:'Vendredi',SATURDAY:'Samedi',SUNDAY:'Dimanche'} as Record<string,string>)[value]??value;}
 }

@@ -10,9 +10,31 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
     private final AuthService auth;
-    public AuthController(AuthService auth) { this.auth = auth; }
-    @PostMapping("/register") ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(auth.register(request));
+    private final fr.vitegourmand.auth.service.PasswordResetService passwordReset;
+    private final fr.vitegourmand.auth.service.RefreshTokenService refreshTokens;
+    public AuthController(AuthService auth, fr.vitegourmand.auth.service.PasswordResetService passwordReset,
+                          fr.vitegourmand.auth.service.RefreshTokenService refreshTokens) {
+        this.auth = auth; this.passwordReset = passwordReset; this.refreshTokens = refreshTokens;
     }
-    @PostMapping("/login") AuthResponse login(@Valid @RequestBody LoginRequest request) { return auth.login(request); }
+    @PostMapping("/register") ResponseEntity<SessionDtos.Session> register(@Valid @RequestBody RegisterRequest request) {
+        auth.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(refreshTokens.issue(request.email()));
+    }
+    @PostMapping("/login") SessionDtos.Session login(@Valid @RequestBody LoginRequest request) {
+        auth.login(request); return refreshTokens.issue(request.email());
+    }
+    @PostMapping("/refresh") SessionDtos.Session refresh(@Valid @RequestBody SessionDtos.Refresh request) {
+        return refreshTokens.rotate(request.refreshToken());
+    }
+    @PostMapping("/logout") ResponseEntity<Void> logout(@Valid @RequestBody SessionDtos.Refresh request) {
+        refreshTokens.revoke(request.refreshToken()); return ResponseEntity.noContent().build();
+    }
+    @PostMapping("/forgot-password") ResponseEntity<Void> forgot(
+            @Valid @RequestBody PasswordResetDtos.Forgot request) {
+        passwordReset.forgot(request); return ResponseEntity.accepted().build();
+    }
+    @PostMapping("/reset-password") ResponseEntity<Void> reset(
+            @Valid @RequestBody PasswordResetDtos.Reset request) {
+        passwordReset.reset(request); return ResponseEntity.noContent().build();
+    }
 }

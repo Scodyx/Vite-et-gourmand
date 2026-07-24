@@ -15,17 +15,31 @@
 
 ## Partiel
 
-- Les tableaux de bord et routes de rôle existent, leurs écrans CRUD détaillés restent à raccorder.
-- Le modèle SQL couvre commandes, historique, avis, horaires et jetons ; toutes les entités/services REST ne sont pas encore codés.
-- MongoDB est configuré et son document existe ; calcul incrémental, reconstruction et graphiques restent à faire.
-- Le JWT d’accès fonctionne ; refresh token et révocation restent à implémenter.
+- Le parcours de commande est raccordé : création transactionnelle, verrou pessimiste du stock,
+  recalcul tarifaire serveur, historique initial, espace client, annulation contrôlée et transitions employé.
+- Le mot de passe oublié utilise un jeton aléatoire à usage unique dont seule l'empreinte SHA-256
+  est stockée. Le lien envoyé par e-mail expire après 30 minutes.
+- Les plats, allergènes et horaires disposent d’API protégées ; les écrans Angular couvrent la
+  création et la consultation de base, mais pas encore toutes les modifications et associations.
+- Les avis sont contrôlés par propriété/état de commande, modérés par l’équipe et seuls les avis
+  approuvés sont publics. L’accueil consomme cette API.
+- MongoDB possède un pipeline de reconstruction idempotent depuis les commandes PostgreSQL non
+  annulées, des filtres par période/menu et un écran administrateur synthétique.
+- Les refresh tokens sont aléatoires, hachés en base, expirables, révoqués au logout et tournés à
+  chaque renouvellement. Angular mutualise une seule tentative après une réponse 401.
 
 ## À faire en priorité
 
-1. Entités et endpoints transactionnels de commande, verrouillage pessimiste du stock et contrôle de propriété.
-2. CRUD employé : menus, plats, horaires, transitions, avis.
-3. Gestion administrateur des employés et agrégats MongoDB.
-4. Parcours mot de passe oublié et refresh token haché.
+1. Finaliser les formulaires Angular de modification des menus, plats, associations et horaires.
+2. Remplacer le dialogue natif d’annulation et enrichir les détails/historiques de commande.
+3. Ajouter davantage de tests d’intégration PostgreSQL/MongoDB et de tests Angular par écran.
+4. Transporter idéalement le refresh token par cookie `HttpOnly SameSite` en production.
+
+## Validation de cette passe
+
+Avant le dernier groupe de changements : Maven réussissait avec 11 tests et Angular compilait.
+La validation finale a été interrompue par la limite d’usage de l’environnement d’approbation ;
+les ajouts postérieurs doivent donc être recompilés avant intégration.
 5. Tests d’intégration avec Testcontainers et tests Angular des guards/formulaires.
 6. Remplacer les images externes et l’estimation de distance avant production.
 

@@ -6,7 +6,11 @@ Socle full-stack de l’application d’un traiteur bordelais fictif, réalisé 
 
 Sont opérationnels dans le code : catalogue public paginé, détail d’un menu, inscription limitée au rôle `USER`, authentification JWT stateless, guards Angular, formulaire de contact avec persistance et e-mail, calcul métier des commandes, règles de transition de statut, migrations et données de démonstration.
 
-Les tableaux de bord USER/EMPLOYEE/ADMIN sont accessibles selon le rôle mais les CRUD de commandes, menus et employés, le refresh token, le mot de passe oublié, les avis et le pipeline de statistiques MongoDB restent à compléter. Voir [l’état détaillé](documentation/ETAT_DU_PROJET.md).
+Les parcours désormais raccordés couvrent le catalogue public filtrable, l’authentification avec
+rotation des refresh tokens, le mot de passe oublié, la commande transactionnelle, le profil et
+les commandes client, les transitions employé, les plats/allergènes/horaires, les avis modérés,
+les employés administrateur et la reconstruction des statistiques MongoDB. Voir
+[l’état détaillé](documentation/ETAT_DU_PROJET.md) pour les limites et le niveau de vérification.
 
 ## Stack
 
@@ -88,4 +92,7 @@ Flux recommandé : `main` stable, `develop` pour l’intégration, branches `fea
 - Application déployée : à compléter
 - Gestion de projet : à compléter
 
-Limitations principales : JDK et Docker doivent être installés localement ; l’API de distance est une abstraction à implémenter avant production ; la persistance sûre des refresh tokens et les fonctions métier avancées sont planifiées.
+Limitations principales : JDK et Docker doivent être installés localement ; la distance hors
+Bordeaux est fournie de manière contrôlée en développement et devra être remplacée par un service
+cartographique côté serveur ; les interfaces de gestion des images, associations menu/plat et
+horaires restent moins avancées que les API ; une revue juridique des pages légales reste nécessaire.

@@ -13,9 +13,14 @@ export const routes: Routes = [
   { path: 'mentions-legales', loadComponent: () => import('./features/public/public-pages').then(m => m.LegalNoticeComponent) },
   { path: 'conditions', loadComponent: () => import('./features/public/public-pages').then(m => m.TermsComponent) },
   { path: 'espace', canActivate: [authGuard], loadComponent: () => import('./features/dashboards/dashboards').then(m => m.UserDashboardComponent) },
+  { path: 'profil', canActivate: [authGuard], loadComponent: () => import('./features/management/management').then(m => m.ProfileComponent) },
   { path: 'commande/:slug', canActivate: [authGuard], loadComponent: () => import('./features/dashboards/dashboards').then(m => m.OrderCreateComponent) },
   { path: 'employe', canActivate: [roleGuard], data: { roles: ['EMPLOYEE','ADMIN'] }, loadComponent: () => import('./features/dashboards/dashboards').then(m => m.EmployeeDashboardComponent) },
+  { path: 'employe/catalogue', canActivate: [roleGuard], data: { roles: ['EMPLOYEE','ADMIN'] }, loadComponent: () => import('./features/management/management').then(m => m.CatalogManagementComponent) },
+  { path: 'employe/avis', canActivate: [roleGuard], data: { roles: ['EMPLOYEE','ADMIN'] }, loadComponent: () => import('./features/management/management').then(m => m.ReviewModerationComponent) },
   { path: 'admin', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/dashboards/dashboards').then(m => m.AdminDashboardComponent) },
+  { path: 'admin/employes', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/management/management').then(m => m.EmployeeManagementComponent) },
+  { path: 'admin/statistiques', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/management/management').then(m => m.StatisticsComponent) },
   { path: 'interdit', loadComponent: () => import('./features/public/public-pages').then(m => m.ForbiddenComponent) },
   { path: '**', loadComponent: () => import('./features/public/public-pages').then(m => m.NotFoundComponent), title: 'Page introuvable' }
 ];
