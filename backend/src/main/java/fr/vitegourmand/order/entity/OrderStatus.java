@@ -1,0 +1,6 @@
+package fr.vitegourmand.order.entity;
+
+public enum OrderStatus {
+    PENDING, ACCEPTED, IN_PREPARATION, OUT_FOR_DELIVERY, DELIVERED,
+    WAITING_FOR_EQUIPMENT_RETURN, COMPLETED, CANCELLED
+}

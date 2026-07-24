@@ -1,0 +1,27 @@
+<a class="skip-link" href="#main-content">Aller au contenu</a>
+<header class="site-header">
+  <nav class="container nav" aria-label="Navigation principale">
+    <a routerLink="/" class="brand">Vite <span>&amp;</span> Gourmand</a>
+    <div class="nav-links">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">Accueil</a>
+      <a routerLink="/menus" routerLinkActive="active">Menus</a>
+      <a routerLink="/contact" routerLinkActive="active">Contact</a>
+      @if (!auth.isAuthenticated()) {
+        <a routerLink="/connexion">Connexion</a><a class="button small" routerLink="/inscription">Inscription</a>
+      } @else {
+        <a routerLink="/espace">Mon espace</a>
+        @if (auth.hasRole(['EMPLOYEE','ADMIN'])) { <a routerLink="/employe">Employé</a> }
+        @if (auth.hasRole(['ADMIN'])) { <a routerLink="/admin">Administration</a> }
+        <button class="link-button" (click)="auth.logout()">Déconnexion</button>
+      }
+    </div>
+  </nav>
+</header>
+<main id="main-content"><router-outlet /></main>
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div><strong>Vite &amp; Gourmand</strong><p>Traiteur événementiel à Bordeaux</p><p>contact@vite-gourmand.example · 05 00 00 00 00</p></div>
+    <div><strong>Horaires</strong><p>Lun.–ven. 9h–18h · Sam. 10h–16h · Dim. fermé</p></div>
+    <div><a routerLink="/mentions-legales">Mentions légales</a><br><a routerLink="/conditions">CGV et confidentialité</a></div>
+  </div>
+</footer>
