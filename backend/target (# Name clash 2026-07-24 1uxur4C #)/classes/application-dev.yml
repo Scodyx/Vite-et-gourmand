@@ -1,6 +1,0 @@
-logging:
-  level:
-    fr.vitegourmand: INFO
-spring:
-  jpa:
-    show-sql: false

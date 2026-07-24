@@ -44,3 +44,6 @@ desktop.ini
 *.temp
 *.swp
 *~
+
+# Répertoires Maven et conflits de synchronisation
+backend/target*/
