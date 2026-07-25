@@ -10,6 +10,10 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(AuthenticationException.class)
+    ResponseEntity<ApiError> authentication(AuthenticationException ex, HttpServletRequest req) {
+        return response(HttpStatus.UNAUTHORIZED, ex.getMessage(), req, Map.of());
+    }
     @ExceptionHandler(NotFoundException.class)
     ResponseEntity<ApiError> notFound(NotFoundException ex, HttpServletRequest req) {
         return response(HttpStatus.NOT_FOUND, ex.getMessage(), req, Map.of());

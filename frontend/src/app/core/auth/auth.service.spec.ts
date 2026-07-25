@@ -19,4 +19,12 @@ describe('AuthService',()=>{
   request.flush({accessToken:'new-access',refreshToken:'new-refresh',tokenType:'Bearer',expiresIn:900,role:'USER'});
   expect(service.token()).toBe('new-access');expect(service.refreshToken()).toBe('new-refresh');
  });
+ it('clears the session and revokes the refresh token on logout',()=>{
+  sessionStorage.setItem('veg_access_token','access');sessionStorage.setItem('veg_refresh_token','refresh');
+  sessionStorage.setItem('veg_role','USER');service.role.set('USER');
+  service.logout();
+  const request=http.expectOne(r=>r.url.endsWith('/auth/logout'));
+  expect(request.request.body).toEqual({refreshToken:'refresh'});request.flush({});
+  expect(service.token()).toBeNull();expect(service.refreshToken()).toBeNull();expect(service.role()).toBeNull();
+ });
 });

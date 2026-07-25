@@ -28,6 +28,8 @@ class AuthServiceTest {
         verify(users).save(captor.capture());
         assertThat(captor.getValue().getRole()).isEqualTo(Role.USER);
         assertThat(captor.getValue().getEmail()).isEqualTo("test@example.fr");
+        assertThat(captor.getValue().getPasswordHash()).isEqualTo("hash");
+        verify(encoder).encode("MotDePasse1!");
     }
 
     @Test void duplicateRegistrationIsRejected() {

@@ -1,6 +1,7 @@
 package fr.vitegourmand.auth.service;
 
 import fr.vitegourmand.auth.dto.*;
+import fr.vitegourmand.common.exception.AuthenticationException;
 import fr.vitegourmand.common.exception.BusinessException;
 import fr.vitegourmand.security.JwtService;
 import fr.vitegourmand.user.entity.*;
@@ -37,9 +38,9 @@ public class AuthService {
     }
     public AuthResponse login(LoginRequest request) {
         var user = users.findByEmailIgnoreCase(request.email()).filter(User::isEnabled)
-                .orElseThrow(() -> new BusinessException("Identifiants invalides"));
+                .orElseThrow(() -> new AuthenticationException("Identifiants invalides"));
         if (!passwords.matches(request.password(), user.getPasswordHash()))
-            throw new BusinessException("Identifiants invalides");
+            throw new AuthenticationException("Identifiants invalides");
         return token(user);
     }
     private AuthResponse token(User user) {

@@ -41,4 +41,14 @@ describe('authInterceptor', () => {
     expect(controller.expectOne('/protected').request.headers.get('Authorization')).toBe('Bearer new-access');
     expect(auth.refreshToken()).toBe('new-refresh');
   });
+
+  it('does not try to refresh an authentication endpoint', () => {
+    sessionStorage.setItem('veg_access_token', 'old-access');
+    sessionStorage.setItem('veg_refresh_token', 'old-refresh');
+    let status: number | undefined;
+    http.post('/auth/login', {}).subscribe({ error: error => status = error.status });
+    controller.expectOne('/auth/login').flush({}, { status: 401, statusText: 'Unauthorized' });
+    expect(status).toBe(401);
+    controller.expectNone(request => request.url.includes('/auth/refresh'));
+  });
 });

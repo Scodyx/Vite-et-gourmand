@@ -16,13 +16,25 @@ const statusLabels:Record<OrderStatus,string>={PENDING:'En attente',ACCEPTED:'Ac
 <div class="cards">@for(o of orders();track o.id){<article class="card"><h2>{{o.orderNumber}}</h2>
 <p><strong>{{o.menuTitle}}</strong> — {{o.personCount}} personnes</p><p>{{o.prestationDate|date:'dd/MM/yyyy'}} à {{o.desiredDeliveryTime}}</p>
 <p class="tag">{{label(o.status)}}</p><p class="price">{{o.totalAmount|currency:'EUR'}}</p>
-@if(o.status==='PENDING'){<button class="button secondary small" (click)="cancel(o)">Annuler</button>}</article>}
+@if(o.status==='PENDING'){<button type="button" class="button secondary small" (click)="openCancellation(o)">Annuler</button>
+@if(cancelOrderId()===o.id){<form (submit)="confirmCancellation(o,$event)" aria-label="Annulation de la commande">
+<label [for]="'cancellation-reason-'+o.id">Motif de l’annulation</label>
+<textarea [id]="'cancellation-reason-'+o.id" rows="3" minlength="3" required
+ [value]="cancellationReason()" (input)="cancellationReason.set($any($event.target).value)"></textarea>
+<div><button class="button small" [disabled]="cancellationReason().trim().length<3">Confirmer</button>
+<button type="button" class="button secondary small" (click)="closeCancellation()">Retour</button></div>
+</form>}}</article>}
 @empty{<p>Aucune commande pour le moment.</p>}</div></section>`})
 export class UserDashboardComponent{
  private api=inject(OrderService);orders=signal<Order[]>([]);message=signal('');
+ cancelOrderId=signal<number|null>(null);cancellationReason=signal('');
  constructor(){this.load();} label(s:OrderStatus){return statusLabels[s];}
  load(){this.api.mine().subscribe({next:p=>this.orders.set(p.content),error:()=>this.message.set('Impossible de charger les commandes.')});}
- cancel(o:Order){const reason=window.prompt('Motif de l’annulation :');if(reason)this.api.cancel(o.id,reason).subscribe(()=>this.load());}
+ openCancellation(o:Order){this.cancelOrderId.set(o.id);this.cancellationReason.set('');}
+ closeCancellation(){this.cancelOrderId.set(null);this.cancellationReason.set('');}
+ confirmCancellation(o:Order,event:Event){event.preventDefault();const reason=this.cancellationReason().trim();if(reason.length<3)return;
+  this.api.cancel(o.id,reason).subscribe({next:()=>{this.closeCancellation();this.load();},
+   error:e=>this.message.set(e.error?.message??'Annulation impossible.')});}
 }
 
 @Component({standalone:true,imports:[ReactiveFormsModule,CommonModule],template:`
