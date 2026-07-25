@@ -4,7 +4,9 @@ import fr.vitegourmand.menu.repository.MenuRepository;
 import fr.vitegourmand.order.dto.OrderDtos.*;
 import fr.vitegourmand.order.entity.*;
 import fr.vitegourmand.order.repository.*;
+import fr.vitegourmand.review.repository.ReviewRepository;
 import fr.vitegourmand.user.entity.User;
+import fr.vitegourmand.user.entity.Role;
 import fr.vitegourmand.user.repository.UserRepository;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -19,9 +21,10 @@ public class OrderService {
  private final CustomerOrderRepository orders; private final OrderStatusHistoryRepository history;
  private final MenuRepository menus; private final UserRepository users; private final OrderPricingService pricing;
  private final OrderStatusService statuses;
+ private final ReviewRepository reviews;
  @Autowired(required=false) private ApplicationEmailService emails;
  public OrderService(CustomerOrderRepository o,OrderStatusHistoryRepository h,MenuRepository m,UserRepository u,
-  OrderPricingService p,OrderStatusService s){orders=o;history=h;menus=m;users=u;pricing=p;statuses=s;}
+  OrderPricingService p,OrderStatusService s,ReviewRepository r){orders=o;history=h;menus=m;users=u;pricing=p;statuses=s;reviews=r;}
  @Transactional
  public View create(String email,Create r){
   User customer=user(email); var menu=menus.findLockedById(r.menuId()).filter(m->m.isActive())
@@ -92,6 +95,7 @@ public class OrderService {
  private User user(String email){return users.findByEmailIgnoreCase(email).filter(User::isEnabled)
   .orElseThrow(()->new NotFoundException("Utilisateur introuvable"));}
  private Detail detail(CustomerOrder o){var entries=history.findByOrderIdOrderByChangedAtAsc(o.getId()).stream()
-  .map(h->new History(h.getPreviousStatus(),h.getNewStatus(),h.getChangedAt(),h.getComment())).toList();
-  var c=o.getCustomer();return new Detail(View.from(o),entries,c.getFirstName()+" "+c.getLastName(),c.getEmail(),c.getPhone());}
+  .map(h->new History(h.getPreviousStatus(),h.getNewStatus(),h.getChangedAt(),actorLabel(h.getChangedBy()),h.getComment())).toList();
+  return new Detail(View.from(o),entries,reviews.existsByOrderId(o.getId()));}
+ private String actorLabel(User actor){if(actor==null)return null;return actor.getRole()==Role.USER?"Client":"Équipe Vite & Gourmand";}
 }

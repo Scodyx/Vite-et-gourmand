@@ -27,4 +27,23 @@ describe('OrderService', () => {
     expect(request.request.method).toBe('GET');
     request.flush({ content: [] });
   });
+
+  it('loads and updates an owned order detail through the users/me API', () => {
+    service.detail(9).subscribe();
+    expect(http.expectOne(r => r.url.endsWith('/users/me/orders/9')).request.method).toBe('GET');
+    service.update(9, {
+      personCount: 12, prestationDate: '2026-08-10', desiredDeliveryTime: '12:30',
+      deliveryAddress: '2 rue Test', deliveryPostalCode: '33000', deliveryCity: 'Bordeaux',
+      deliveryCountry: 'France', distanceKm: 0
+    }).subscribe();
+    expect(http.expectOne(r => r.url.endsWith('/users/me/orders/9')).request.method).toBe('PUT');
+  });
+
+  it('cancels through the owned order endpoint', () => {
+    service.cancel(9, 'Changement de programme').subscribe();
+    const request = http.expectOne(r => r.url.endsWith('/users/me/orders/9/cancel'));
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual({ reason: 'Changement de programme', contactMode: 'CLIENT_EMAIL' });
+    request.flush({});
+  });
 });

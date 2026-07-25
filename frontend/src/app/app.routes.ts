@@ -13,6 +13,7 @@ export const routes: Routes = [
   { path: 'mentions-legales', loadComponent: () => import('./features/public/public-pages').then(m => m.LegalNoticeComponent) },
   { path: 'conditions', loadComponent: () => import('./features/public/public-pages').then(m => m.TermsComponent) },
   { path: 'espace', canActivate: [authGuard], loadComponent: () => import('./features/dashboards/dashboards').then(m => m.UserDashboardComponent) },
+  { path: 'espace/commandes/:id', canActivate: [authGuard], loadComponent: () => import('./features/dashboards/order-detail').then(m => m.OrderDetailComponent), title: 'Détail de la commande' },
   { path: 'profil', canActivate: [authGuard], loadComponent: () => import('./features/management/management').then(m => m.ProfileComponent) },
   { path: 'commande/:slug', canActivate: [authGuard], loadComponent: () => import('./features/dashboards/dashboards').then(m => m.OrderCreateComponent) },
   { path: 'employe', canActivate: [roleGuard], data: { roles: ['EMPLOYEE','ADMIN'] }, loadComponent: () => import('./features/dashboards/dashboards').then(m => m.EmployeeDashboardComponent) },

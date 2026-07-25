@@ -17,13 +17,14 @@ public final class OrderDtos {
   @NotBlank String deliveryCity,@NotBlank String deliveryCountry,@NotNull @DecimalMin("0.0") BigDecimal distanceKm){}
  public record View(Long id,String orderNumber,Long menuId,String menuTitle,int personCount,LocalDate prestationDate,
   LocalTime desiredDeliveryTime,String deliveryAddress,String deliveryPostalCode,String deliveryCity,
+  String deliveryCountry,BigDecimal distanceKm,
   BigDecimal menuAmount,BigDecimal discountAmount,BigDecimal deliveryAmount,BigDecimal totalAmount,
-  OrderStatus status,boolean equipmentLoaned,Instant createdAt){
+  OrderStatus status,boolean equipmentLoaned,String cancellationReason,Instant createdAt){
   public static View from(CustomerOrder o){return new View(o.getId(),o.getOrderNumber(),o.getMenu().getId(),o.getMenu().getTitle(),
    o.getPersonCount(),o.getPrestationDate(),o.getDesiredDeliveryTime(),o.getDeliveryAddress(),o.getDeliveryPostalCode(),
-   o.getDeliveryCity(),o.getMenuAmount(),o.getDiscountAmount(),o.getDeliveryAmount(),o.getTotalAmount(),o.getStatus(),
-   o.isEquipmentLoaned(),o.getCreatedAt());}
+   o.getDeliveryCity(),o.getDeliveryCountry(),o.getDistanceKm(),o.getMenuAmount(),o.getDiscountAmount(),o.getDeliveryAmount(),
+   o.getTotalAmount(),o.getStatus(),o.isEquipmentLoaned(),o.getCancellationReason(),o.getCreatedAt());}
  }
- public record History(OrderStatus previousStatus,OrderStatus newStatus,Instant changedAt,String comment){}
- public record Detail(View order,List<History> history,String customerName,String customerEmail,String customerPhone){}
+ public record History(OrderStatus previousStatus,OrderStatus newStatus,Instant changedAt,String actor,String comment){}
+ public record Detail(View order,List<History> history,boolean reviewSubmitted){}
 }

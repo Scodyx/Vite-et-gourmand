@@ -9,6 +9,7 @@ import fr.vitegourmand.order.entity.CancellationContactMode;
 import fr.vitegourmand.order.entity.CustomerOrder;
 import fr.vitegourmand.order.entity.OrderStatus;
 import fr.vitegourmand.order.repository.*;
+import fr.vitegourmand.review.repository.ReviewRepository;
 import fr.vitegourmand.user.entity.User;
 import fr.vitegourmand.user.repository.UserRepository;
 import org.junit.jupiter.api.*;
@@ -20,10 +21,11 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class OrderServiceTest {
  private CustomerOrderRepository orders;private OrderStatusHistoryRepository history;private MenuRepository menus;
- private UserRepository users;private OrderService service;private Menu menu;private User user;
+ private UserRepository users;private ReviewRepository reviews;private OrderService service;private Menu menu;private User user;
  @BeforeEach void setup(){
   orders=mock(CustomerOrderRepository.class);history=mock(OrderStatusHistoryRepository.class);menus=mock(MenuRepository.class);users=mock(UserRepository.class);
-  service=new OrderService(orders,history,menus,users,new OrderPricingService(),new OrderStatusService());
+  reviews=mock(ReviewRepository.class);
+  service=new OrderService(orders,history,menus,users,new OrderPricingService(),new OrderStatusService(),reviews);
   menu=new Menu();menu.setTitle("Test");menu.setSlug("test");menu.setDescription("Description");menu.setConditions("Conditions");
   menu.setMinimumPersons(10);menu.setBasePrice(new BigDecimal("100"));menu.setAvailableStock(30);menu.setActive(true);menu.setTheme("Test");menu.setDiet("Test");
   ReflectionTestUtils.setField(menu,"id",1L);
@@ -67,6 +69,21 @@ class OrderServiceTest {
   assertThatThrownBy(()->service.updateMine("client@example.test",9L,update(12)))
    .isInstanceOf(fr.vitegourmand.common.exception.NotFoundException.class);
   assertThat(menu.getAvailableStock()).isEqualTo(30);
+ }
+ @Test void detailUsesTheAuthenticatedOwnerQueryAndIncludesReviewState(){
+  var order=order(10,OrderStatus.COMPLETED);
+  when(orders.findByIdAndCustomerEmailIgnoreCase(9L,"client@example.test")).thenReturn(Optional.of(order));
+  when(history.findByOrderIdOrderByChangedAtAsc(9L)).thenReturn(java.util.List.of());
+  when(reviews.existsByOrderId(9L)).thenReturn(true);
+  var detail=service.mineDetail("client@example.test",9L);
+  assertThat(detail.order().orderNumber()).isEqualTo("VG-TEST");assertThat(detail.reviewSubmitted()).isTrue();
+  verify(orders).findByIdAndCustomerEmailIgnoreCase(9L,"client@example.test");
+ }
+ @Test void detailOfAnotherUsersOrderIsNotExposed(){
+  when(orders.findByIdAndCustomerEmailIgnoreCase(9L,"client@example.test")).thenReturn(Optional.empty());
+  assertThatThrownBy(()->service.mineDetail("client@example.test",9L))
+   .isInstanceOf(fr.vitegourmand.common.exception.NotFoundException.class);
+  verifyNoInteractions(history,reviews);
  }
  private CustomerOrder order(int count,OrderStatus status){
   var order=new CustomerOrder();ReflectionTestUtils.setField(order,"id",9L);order.setCustomer(user);order.setMenu(menu);

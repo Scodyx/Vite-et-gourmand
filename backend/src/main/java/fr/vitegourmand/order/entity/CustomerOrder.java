@@ -47,6 +47,7 @@ public class CustomerOrder {
     public BigDecimal getDeliveryAmount(){return deliveryAmount;} public BigDecimal getDiscountAmount(){return discountAmount;}
     public BigDecimal getTotalAmount(){return totalAmount;} public OrderStatus getStatus(){return status;}
     public boolean isEquipmentLoaned(){return equipmentLoaned;} public Instant getCreatedAt(){return createdAt;}
+    public String getCancellationReason(){return cancellationReason;} public Instant getCancelledAt(){return cancelledAt;}
     public void setOrderNumber(String v){orderNumber=v;} public void setCustomer(User v){customer=v;} public void setMenu(Menu v){menu=v;}
     public void setPersonCount(int v){personCount=v;} public void setPrestationDate(LocalDate v){prestationDate=v;}
     public void setDesiredDeliveryTime(LocalTime v){desiredDeliveryTime=v;} public void setDeliveryAddress(String v){deliveryAddress=v;}

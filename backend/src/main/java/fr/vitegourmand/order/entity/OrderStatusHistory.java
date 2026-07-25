@@ -15,5 +15,5 @@ public class OrderStatusHistory {
   var h=new OrderStatusHistory();h.order=o;h.previousStatus=before;h.newStatus=after;h.changedBy=by;h.comment=comment;return h;
  }
  public OrderStatus getPreviousStatus(){return previousStatus;} public OrderStatus getNewStatus(){return newStatus;}
- public Instant getChangedAt(){return changedAt;} public String getComment(){return comment;}
+ public Instant getChangedAt(){return changedAt;} public User getChangedBy(){return changedBy;} public String getComment(){return comment;}
 }
