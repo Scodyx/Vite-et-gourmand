@@ -29,6 +29,10 @@ export const routes: Routes = [
   { path: 'admin/menus/nouveau', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-menus').then(m => m.AdminMenuFormComponent) },
   { path: 'admin/menus/:id', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-menus').then(m => m.AdminMenuDetailComponent) },
   { path: 'admin/menus/:id/modifier', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-menus').then(m => m.AdminMenuFormComponent) },
+  { path: 'admin/plats', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-dishes').then(m => m.AdminDishListComponent) },
+  { path: 'admin/plats/nouveau', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-dishes').then(m => m.AdminDishFormComponent) },
+  { path: 'admin/plats/:id', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-dishes').then(m => m.AdminDishDetailComponent) },
+  { path: 'admin/plats/:id/modifier', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-dishes').then(m => m.AdminDishFormComponent) },
   { path: 'interdit', loadComponent: () => import('./features/public/public-pages').then(m => m.ForbiddenComponent) },
   { path: '**', loadComponent: () => import('./features/public/public-pages').then(m => m.NotFoundComponent), title: 'Page introuvable' }
 ];

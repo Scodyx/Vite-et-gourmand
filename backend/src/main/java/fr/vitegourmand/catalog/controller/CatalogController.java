@@ -16,7 +16,9 @@ public class CatalogController {
  @PostMapping("/api/v1/employee/allergens") @ResponseStatus(HttpStatus.CREATED) AllergenView allergen(@Valid @RequestBody AllergenInput r){return service.createAllergen(r);}
  @PutMapping("/api/v1/employee/allergens/{id}") AllergenView allergen(@PathVariable Long id,@Valid @RequestBody AllergenInput r){return service.updateAllergen(id,r);}
  @GetMapping("/api/v1/employee/dishes") List<DishView> dishes(){return service.dishes();}
- @PostMapping("/api/v1/employee/dishes") @ResponseStatus(HttpStatus.CREATED) DishView dish(@Valid @RequestBody DishInput r){return service.createDish(r);}
- @PutMapping("/api/v1/employee/dishes/{id}") DishView dish(@PathVariable Long id,@Valid @RequestBody DishInput r){return service.updateDish(id,r);}
- @DeleteMapping("/api/v1/employee/dishes/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) void disable(@PathVariable Long id){service.disableDish(id);}
+ @GetMapping("/api/v1/admin/dishes") List<DishView> adminDishes(){return service.dishes();}
+ @GetMapping("/api/v1/admin/dishes/{id}") DishView dish(@PathVariable Long id){return service.dish(id);}
+ @PostMapping("/api/v1/admin/dishes") @ResponseStatus(HttpStatus.CREATED) DishView dish(@Valid @RequestBody DishInput r){return service.createDish(r);}
+ @PutMapping("/api/v1/admin/dishes/{id}") DishView dish(@PathVariable Long id,@Valid @RequestBody DishInput r){return service.updateDish(id,r);}
+ @PatchMapping("/api/v1/admin/dishes/{id}/enabled") DishView enabledDish(@PathVariable Long id,@RequestParam boolean value){return service.enableDish(id,value);}
 }

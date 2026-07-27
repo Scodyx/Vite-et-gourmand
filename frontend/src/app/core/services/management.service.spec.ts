@@ -45,4 +45,17 @@ describe('ManagementService admin API', () => {
     const request=http.expectOne(r=>r.url.endsWith('/admin/menus/5/enabled')&&r.params.get('value')==='false');
     expect(request.request.method).toBe('PATCH');
   });
+  it('uses ADMIN dish CRUD endpoints',()=>{
+    service.adminDishes().subscribe();http.expectOne(`${environment.apiUrl}/admin/dishes`).flush([]);
+    service.adminDish(4).subscribe();http.expectOne(`${environment.apiUrl}/admin/dishes/4`).flush({});
+    service.createAdminDish({name:'Soupe'}).subscribe();
+    expect(http.expectOne(`${environment.apiUrl}/admin/dishes`).request.method).toBe('POST');
+    service.updateAdminDish(4,{name:'Soupe maison'}).subscribe();
+    expect(http.expectOne(`${environment.apiUrl}/admin/dishes/4`).request.method).toBe('PUT');
+  });
+  it('activates and deactivates dishes explicitly',()=>{
+    service.enableDish(4,false).subscribe();
+    const request=http.expectOne(r=>r.url.endsWith('/admin/dishes/4/enabled')&&r.params.get('value')==='false');
+    expect(request.request.method).toBe('PATCH');
+  });
 });

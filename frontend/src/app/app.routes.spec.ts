@@ -19,3 +19,14 @@ describe('employee routes', () => {
     }
   });
 });
+
+describe('admin dish routes', () => {
+  it('protects list, creation, detail and edit for ADMIN only', () => {
+    for (const path of ['admin/plats', 'admin/plats/nouveau', 'admin/plats/:id', 'admin/plats/:id/modifier']) {
+      const route = routes.find(candidate => candidate.path === path);
+      expect(route).withContext(path).toBeDefined();
+      expect(route?.canActivate).withContext(path).toContain(roleGuard);
+      expect(route?.data?.['roles']).withContext(path).toEqual(['ADMIN']);
+    }
+  });
+});

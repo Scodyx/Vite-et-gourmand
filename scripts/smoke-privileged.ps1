@@ -13,6 +13,7 @@ $base = "http://127.0.0.1:8080/api/v1"
 $backendProcess = $null
 $frontendProcess = $null
 $employeeCreated = $false
+$userCreated = $false
 $hoursChanged = $false
 $scenarioError = $null
 $cleanupErrors = [Collections.Generic.List[string]]::new()
@@ -46,15 +47,15 @@ function Stop-ProcessTree([Diagnostics.Process]$Process) {
         }
     Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
 }
-function Assert-SmokeIdentity([string]$Email,[ValidateSet("ADMIN","EMPLOYEE")][string]$Role) {
-    $expectedPrefix=if($Role-eq "ADMIN"){"smoke.admin."}else{"smoke.employee."}
+function Assert-SmokeIdentity([string]$Email,[ValidateSet("ADMIN","EMPLOYEE","USER")][string]$Role) {
+    $expectedPrefix=switch($Role){"ADMIN"{"smoke.admin."}"EMPLOYEE"{"smoke.employee."}default{"smoke.user."}}
     $escaped=[regex]::Escape($expectedPrefix)
     if($Email-notmatch "^$escaped[0-9]+@example[.]test$"){
         throw "Cleanup guard rejected a non-smoke $Role account."
     }
     $expectedPrefix
 }
-function Disable-SmokeAccount([string]$Email,[ValidateSet("ADMIN","EMPLOYEE")][string]$Role) {
+function Disable-SmokeAccount([string]$Email,[ValidateSet("ADMIN","EMPLOYEE","USER")][string]$Role) {
     $expectedPrefix=Assert-SmokeIdentity $Email $Role
     $dbUser=(& docker compose exec -T postgres printenv POSTGRES_USER).Trim()
     $dbName=(& docker compose exec -T postgres printenv POSTGRES_DB).Trim()
@@ -86,6 +87,15 @@ function Disable-SmokeMenu([string]$Title) {
     if($LASTEXITCODE-ne 0){throw "Browser menu cleanup failed."}
     @($result|Where-Object{$_-match "^[0-9]+$"}).Count
 }
+function Disable-SmokeDish([string]$Name) {
+    if($Name-notmatch "^Smoke Browser Dish [0-9]+( Updated)?$"){throw "Dish cleanup guard rejected a non-smoke name."}
+    $dbUser=(& docker compose exec -T postgres printenv POSTGRES_USER).Trim()
+    $dbName=(& docker compose exec -T postgres printenv POSTGRES_DB).Trim()
+    $sql="UPDATE dish SET active=false WHERE name=:'exact_name' RETURNING id;"
+    $result=$sql | & docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -v "exact_name=$Name" -U $dbUser -d $dbName -tA
+    if($LASTEXITCODE-ne 0){throw "Browser dish cleanup failed."}
+    @($result|Where-Object{$_-match "^[0-9]+$"}).Count
+}
 function Start-EmployeeBrowserSmoke {
     if(Get-NetTCPConnection -State Listen -LocalPort 4200 -ErrorAction SilentlyContinue){
         throw "Port 4200 is already used; nothing was stopped."
@@ -112,11 +122,12 @@ function Start-EmployeeBrowserSmoke {
     $env:E2E_ADMIN_EMPLOYEE_EMAIL=$browserEmployeeEmail
     $env:E2E_ADMIN_EMPLOYEE_PASSWORD=$browserEmployeePassword
     $env:E2E_ADMIN_MENU_TITLE=$browserMenuTitle
+    $env:E2E_ADMIN_DISH_NAME=$browserDishName
     try {
         & npm.cmd run e2e:smoke --prefix $frontend
         if($LASTEXITCODE-ne 0){throw "Playwright employee smoke test failed."}
     } finally {
-        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE -ErrorAction SilentlyContinue
+        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE,Env:E2E_ADMIN_DISH_NAME -ErrorAction SilentlyContinue
     }
 }
 if(-not(Test-Path -LiteralPath $jar)){throw "Build the backend JAR first."}
@@ -134,6 +145,8 @@ $browserEmployeeEmail="smoke.employee.$([DateTimeOffset]::UtcNow.ToUnixTimeMilli
 $browserEmployeePassword=New-RandomPassword
 $smokeMenuTitle="Smoke API Menu $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 $browserMenuTitle="Smoke Browser Menu $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+$smokeDishName="Smoke API Dish $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+$browserDishName="Smoke Browser Dish $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 $userEmail="smoke.user.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())@example.test"
 $userPassword=New-RandomPassword
 try {
@@ -149,6 +162,17 @@ try {
     Expect ANONYMOUS_ADMIN (Request GET "$base/admin/employees") 401
     $admin=Request POST "$base/auth/login" @{} @{email=$AdminEmail;password=$AdminPassword};Expect ADMIN_LOGIN $admin 200
     $ah=@{Authorization="Bearer $($admin.Content.accessToken)"}
+    Expect ANONYMOUS_ADMIN_DISHES (Request GET "$base/admin/dishes") 401
+    $dishPayload=@{name=$smokeDishName;description="Plat de validation automatique";type="MAIN_COURSE";active=$true}
+    $adminDish=Request POST "$base/admin/dishes" $ah $dishPayload;Expect ADMIN_CREATE_DISH $adminDish 201;$adminDishId=$adminDish.Content.id
+    Expect ADMIN_LIST_DISHES (Request GET "$base/admin/dishes" $ah) 200
+    Expect ADMIN_DISH_DETAIL (Request GET "$base/admin/dishes/$adminDishId" $ah) 200
+    $dishPayload.name="$smokeDishName Updated";$dishPayload.description="Description mise a jour"
+    Expect ADMIN_UPDATE_DISH (Request PUT "$base/admin/dishes/$adminDishId" $ah $dishPayload) 200
+    $invalidDish=$dishPayload.Clone();$invalidDish.name=" ";Expect ADMIN_DISH_INVALID_NAME (Request PUT "$base/admin/dishes/$adminDishId" $ah $invalidDish) 400
+    Expect ADMIN_DISH_DUPLICATE (Request POST "$base/admin/dishes" $ah $dishPayload) 409
+    Expect ADMIN_DISABLE_DISH (Request PATCH "$base/admin/dishes/$adminDishId/enabled?value=false" $ah) 200
+    Expect ADMIN_REACTIVATE_DISH (Request PATCH "$base/admin/dishes/$adminDishId/enabled?value=true" $ah) 200
     Expect ANONYMOUS_ADMIN_MENUS (Request GET "$base/admin/menus") 401
     $menuPayload=@{title=$smokeMenuTitle;description="Menu de validation automatique";conditions="Commande de test";minimumPersons=4;basePrice=15.50;availableStock=40;active=$true;theme="Smoke";diet="Classique";imageUrl=$null}
     $adminMenu=Request POST "$base/admin/menus" $ah $menuPayload;Expect ADMIN_CREATE_MENU $adminMenu 201;$adminMenuId=$adminMenu.Content.id;$adminMenuSlug=$adminMenu.Content.slug
@@ -188,11 +212,13 @@ try {
     Expect EMPLOYEE_ORDERS (Request GET "$base/employee/orders?page=0&size=1" $eh) 200
     Expect EMPLOYEE_ADMIN_FORBIDDEN (Request GET "$base/admin/employees" $eh) 403
     Expect EMPLOYEE_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $eh) 403
+    Expect EMPLOYEE_ADMIN_DISHES_FORBIDDEN (Request GET "$base/admin/dishes" $eh) 403
     $user=Request POST "$base/auth/register" @{} @{firstName="Smoke";lastName="Customer";phone="0600000001";email=$userEmail;
       addressLine="1 rue Test";postalCode="33000";city="Bordeaux";country="France";password=$userPassword;termsAccepted=$true}
-    Expect USER_REGISTER $user 201;$uh=@{Authorization="Bearer $($user.Content.accessToken)"}
+    Expect USER_REGISTER $user 201;$userCreated=$true;$uh=@{Authorization="Bearer $($user.Content.accessToken)"}
     Expect USER_EMPLOYEE_FORBIDDEN (Request GET "$base/employee/orders" $uh) 403
     Expect USER_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $uh) 403
+    Expect USER_ADMIN_DISHES_FORBIDDEN (Request GET "$base/admin/dishes" $uh) 403
     $inactiveOrder=@{menuId=$adminMenuId;personCount=4;prestationDate=(Get-Date).Date.AddDays(9).ToString("yyyy-MM-dd");desiredDeliveryTime="12:00";deliveryAddress="1 rue Test";deliveryPostalCode="33000";deliveryCity="Bordeaux";deliveryCountry="France";distanceKm=0;outsideBordeaux=$false;equipmentLoaned=$false}
     Expect USER_INACTIVE_MENU_ORDER (Request POST "$base/orders" $uh $inactiveOrder) 404
     $menus=Request GET "$base/public/menus?size=1";Expect PUBLIC_MENUS $menus 200;$menu=$menus.Content.content|Select-Object -First 1
@@ -225,6 +251,14 @@ try {
     $scenarioError=$_
 } finally {
     try {
+        $browserDishes=(Disable-SmokeDish "$browserDishName Updated")+(Disable-SmokeDish $browserDishName)
+        if($browserDishes-gt 0){Write-Output "BROWSER_DISH_CLEANUP=DEACTIVATED"}
+    } catch {$cleanupErrors.Add("Browser dish cleanup failed: $($_.Exception.Message)")}
+    if($adminDishId -and $ah){
+        try {Expect ADMIN_DISH_FINAL_DISABLE (Request PATCH "$base/admin/dishes/$adminDishId/enabled?value=false" $ah) 200}
+        catch {$cleanupErrors.Add("API dish cleanup failed: $($_.Exception.Message)")}
+    }
+    try {
         $browserMenus=(Disable-SmokeMenu "$browserMenuTitle Updated")+(Disable-SmokeMenu $browserMenuTitle)
         if($browserMenus-gt 0){Write-Output "BROWSER_MENU_CLEANUP=DEACTIVATED"}
     } catch {$cleanupErrors.Add("Browser menu cleanup failed: $($_.Exception.Message)")}
@@ -256,6 +290,10 @@ try {
     }
     try {Disable-SmokeAccount $AdminEmail ADMIN;Write-Output "ADMIN_CLEANUP=DEACTIVATED"}
     catch {$cleanupErrors.Add("ADMIN database cleanup failed: $($_.Exception.Message)")}
+    if($userCreated){
+        try {Disable-SmokeAccount $userEmail USER;Write-Output "USER_CLEANUP=DEACTIVATED"}
+        catch {$cleanupErrors.Add("USER database cleanup failed: $($_.Exception.Message)")}
+    }
     if($FailCleanupAfterDeactivation){$cleanupErrors.Add("Intentional cleanup failure used to validate the non-zero exit code.")}
     if($backendProcess -and -not $backendProcess.HasExited){
         if($employeeCreated){
@@ -266,7 +304,7 @@ try {
         catch {$cleanupErrors.Add("ADMIN reconnection check failed: $($_.Exception.Message)")}
     }
     $AdminPassword=$null;$employeePassword=$null;$browserEmployeePassword=$null;$userPassword=$null
-    Remove-Item Env:INITIAL_ADMIN_ENABLED,Env:INITIAL_ADMIN_EMAIL,Env:INITIAL_ADMIN_PASSWORD,Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE -ErrorAction SilentlyContinue
+    Remove-Item Env:INITIAL_ADMIN_ENABLED,Env:INITIAL_ADMIN_EMAIL,Env:INITIAL_ADMIN_PASSWORD,Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE,Env:E2E_ADMIN_DISH_NAME -ErrorAction SilentlyContinue
     Stop-ProcessTree $frontendProcess
     Stop-ProcessTree $backendProcess
 }
