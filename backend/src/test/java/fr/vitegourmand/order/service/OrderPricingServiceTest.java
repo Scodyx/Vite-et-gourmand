@@ -1,9 +1,9 @@
 package fr.vitegourmand.order.service;
 
-import fr.vitegourmand.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.*;
+import fr.vitegourmand.common.exception.BusinessException;
 
 class OrderPricingServiceTest {
     private final OrderPricingService service = new OrderPricingService();
@@ -23,6 +23,10 @@ class OrderPricingServiceTest {
     }
     @Test void rejectsGuestCountBelowMinimum() {
         assertThatThrownBy(() -> service.calculate(new BigDecimal("200"), 10, 9, false, BigDecimal.ZERO))
+                .isInstanceOf(BusinessException.class);
+    }
+    @Test void negativeDistanceIsRejected() {
+        assertThatThrownBy(() -> service.calculate(new BigDecimal("100"), 10, 10, true, new BigDecimal("-1")))
                 .isInstanceOf(BusinessException.class);
     }
 }

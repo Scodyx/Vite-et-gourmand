@@ -15,10 +15,10 @@ INSERT INTO dish(name,description,type) VALUES
 ('Pavlova aux fruits','Meringue et fruits frais','DESSERT');
 
 INSERT INTO menu(title,slug,description,conditions,minimum_persons,base_price,available_stock,active,theme,diet) VALUES
-('Menu de Noël','menu-de-noel','Une table festive aux saveurs hivernales.','Commande 7 jours avant la prestation.',10,390.00,8,true,'Fêtes','Classique'),
-('Menu Élégance Bordelaise','elegance-bordelaise','Une réception raffinée inspirée du terroir bordelais.','Commande 5 jours avant la prestation.',12,456.00,12,true,'Réception','Classique'),
-('Menu Végétarien Gourmand','vegetarien-gourmand','Une cuisine végétale généreuse et colorée.','Commande 4 jours avant la prestation.',8,248.00,15,true,'Nature','Végétarien'),
-('Menu Réception Classique','reception-classique','Des incontournables soignés pour tous les événements.','Commande 5 jours avant la prestation.',15,510.00,10,true,'Réception','Classique');
+('Menu de Noël','menu-de-noel','Une table festive aux saveurs hivernales.','Commande 7 jours avant la prestation.',10,390.00,80,true,'Fêtes','Classique'),
+('Menu Élégance Bordelaise','elegance-bordelaise','Une réception raffinée inspirée du terroir bordelais.','Commande 5 jours avant la prestation.',12,456.00,144,true,'Réception','Classique'),
+('Menu Végétarien Gourmand','vegetarien-gourmand','Une cuisine végétale généreuse et colorée.','Commande 4 jours avant la prestation.',8,248.00,120,true,'Nature','Végétarien'),
+('Menu Réception Classique','reception-classique','Des incontournables soignés pour tous les événements.','Commande 5 jours avant la prestation.',15,510.00,150,true,'Réception','Classique');
 
 INSERT INTO menu_image(menu_id,image_url,alt_text,display_order)
 SELECT id,'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80',

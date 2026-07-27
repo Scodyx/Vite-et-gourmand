@@ -6,7 +6,11 @@ Socle full-stack de l’application d’un traiteur bordelais fictif, réalisé 
 
 Sont opérationnels dans le code : catalogue public paginé, détail d’un menu, inscription limitée au rôle `USER`, authentification JWT stateless, guards Angular, formulaire de contact avec persistance et e-mail, calcul métier des commandes, règles de transition de statut, migrations et données de démonstration.
 
-Les tableaux de bord USER/EMPLOYEE/ADMIN sont accessibles selon le rôle mais les CRUD de commandes, menus et employés, le refresh token, le mot de passe oublié, les avis et le pipeline de statistiques MongoDB restent à compléter. Voir [l’état détaillé](documentation/ETAT_DU_PROJET.md).
+Les parcours désormais raccordés couvrent le catalogue public filtrable, l’authentification avec
+rotation des refresh tokens, le mot de passe oublié, la commande transactionnelle, le profil et
+les commandes client, les transitions employé, les plats/allergènes/horaires, les avis modérés,
+les employés administrateur et la reconstruction des statistiques MongoDB. Voir
+[l’état détaillé](documentation/ETAT_DU_PROJET.md) pour les limites et le niveau de vérification.
 
 ## Stack
 
@@ -80,6 +84,70 @@ Set-Location ..
 docker compose config
 ```
 
+## Initialisation et smoke test privilégié
+
+En profil `dev`, le premier administrateur n'est créé que si `INITIAL_ADMIN_ENABLED=true`,
+`INITIAL_ADMIN_EMAIL` et `INITIAL_ADMIN_PASSWORD` sont explicitement fournis. L'e-mail est
+normalisé, le mot de passe est haché avec BCrypt et un compte existant n'est jamais modifié.
+Aucune valeur secrète par défaut n'est définie.
+
+```powershell
+$env:INITIAL_ADMIN_ENABLED = "true"
+$env:INITIAL_ADMIN_EMAIL = "admin.local@example.test"
+$env:INITIAL_ADMIN_PASSWORD = Read-Host "Mot de passe temporaire"
+Set-Location backend
+.\mvnw.cmd spring-boot:run
+```
+
+Après `docker compose up -d` et `.\mvnw.cmd clean package`, le smoke test privilégié génère
+en mémoire des identifiants uniques sous le domaine réservé `example.test`, crée l'EMPLOYEE via
+l'API ADMIN réelle, vérifie les permissions et exécute le smoke navigateur employé :
+
+```powershell
+Set-Location ..
+.\scripts\smoke-privileged.ps1
+```
+
+Le bloc `finally` désactive ensuite, par leur adresse exacte et leur rôle attendu, l'EMPLOYEE et
+l'ADMIN temporaires. Il contrôle que leurs connexions sont refusées, supprime les secrets de
+l'environnement du processus et arrête Spring Boot et Angular. Aucun compte privilégié actif créé
+par une exécution réussie ne doit subsister. Le script retourne un code non nul si le scénario ou
+ce nettoyage obligatoire échoue.
+
+Le test navigateur utilise Playwright avec Chromium. Le navigateur est installé dans le cache
+local de l'utilisateur, jamais dans Git :
+
+```powershell
+Set-Location frontend
+npm.cmd install
+npx.cmd playwright install chromium
+$env:E2E_EMPLOYEE_EMAIL = "<adresse-temporaire>"
+$env:E2E_EMPLOYEE_PASSWORD = Read-Host "Mot de passe temporaire"
+npm.cmd run e2e:smoke
+Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD
+```
+
+En usage normal, `smoke-privileged.ps1` fournit lui-même ces variables en mémoire. En cas d'échec
+de nettoyage, conserver la sortie non secrète, vérifier que Docker et PostgreSQL sont disponibles,
+puis relancer le script ; ne jamais désactiver des comptes par une recherche large ou par leur seul
+rôle. Le script n'affiche aucun mot de passe, JWT ou refresh token. Ne jamais commiter de mot de
+passe ni le fichier `.env`.
+
+### Audit et nettoyage ciblé des anciennes données smoke
+
+Le script fonctionne en lecture seule par défaut et cible exclusivement les préfixes générés par
+`smoke-privileged.ps1`. Il n'agit jamais sur tous les comptes `example.test`, un rôle entier ou
+une donnée dont l'origine est incertaine :
+
+```powershell
+.\scripts\cleanup-smoke-data.ps1        # audit uniquement
+.\scripts\cleanup-smoke-data.ps1 -Apply # application explicite
+```
+
+Le mode `-Apply` désactive les comptes, menus et plats correspondant exactement aux motifs smoke
+connus. Il détache uniquement les allergènes smoke de plats smoke, sans supprimer de compte,
+commande, avis ou allergène. PostgreSQL doit être démarré par Docker Compose.
+
 ## Git et liens
 
 Flux recommandé : `main` stable, `develop` pour l’intégration, branches `feature/*`, `fix/*` et `docs/*`. Commits conventionnels (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
@@ -88,4 +156,7 @@ Flux recommandé : `main` stable, `develop` pour l’intégration, branches `fea
 - Application déployée : à compléter
 - Gestion de projet : à compléter
 
-Limitations principales : JDK et Docker doivent être installés localement ; l’API de distance est une abstraction à implémenter avant production ; la persistance sûre des refresh tokens et les fonctions métier avancées sont planifiées.
+Limitations principales : JDK et Docker doivent être installés localement ; la distance hors
+Bordeaux est fournie de manière contrôlée en développement et devra être remplacée par un service
+cartographique côté serveur ; les interfaces de gestion des images, associations menu/plat et
+horaires restent moins avancées que les API ; une revue juridique des pages légales reste nécessaire.

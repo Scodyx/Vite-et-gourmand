@@ -18,6 +18,35 @@ En production : utiliser HTTPS, une clé JWT aléatoire gérée par un coffre, d
 
 Les migrations sous `backend/src/main/resources/db/migration` sont synchronisées avec `database/schema.sql` et `data.sql`. Les statistiques MongoDB sont dérivées : PostgreSQL demeure la source de vérité.
 
+## Commandes et récupération de compte
+
+`POST /api/v1/orders` verrouille le menu en écriture, vérifie le stock, recalcule tous les
+montants côté serveur, décrémente le stock et écrit le premier historique dans une même
+transaction. `GET /api/v1/orders` est limité au compte authentifié. L'annulation client
+contrôle également la propriété et restitue le stock. Les transitions d'équipe passent par
+`PATCH /api/v1/employee/orders/{id}/status` et la machine d'états métier.
+
+`POST /api/v1/auth/forgot-password` répond de façon identique que l'adresse existe ou non.
+Le jeton envoyé par e-mail expire après 30 minutes et seule son empreinte SHA-256 est
+persistée. `POST /api/v1/auth/reset-password` impose un mot de passe fort et invalide le
+jeton après le premier usage.
+
+Les refresh tokens sont des valeurs aléatoires de 384 bits. Seule leur empreinte SHA-256 est
+conservée dans PostgreSQL. Un renouvellement révoque le jeton présenté et en émet un nouveau ;
+le logout révoque le jeton courant. Le stockage navigateur est limité à `sessionStorage` dans
+la démonstration. Un cookie `HttpOnly`, `Secure`, `SameSite` est recommandé en production.
+
+## Catalogue, avis et statistiques
+
+Les plats et allergènes sont relationnels (`dish_allergen`) et le détail public d’un menu agrège
+sa galerie, ses plats et leurs allergènes. Les horaires publics et administrables proviennent de
+PostgreSQL. Un avis exige une commande `COMPLETED` appartenant au compte courant et passe par
+la modération avant publication.
+
+PostgreSQL demeure la source de vérité. `POST /api/v1/admin/statistics/rebuild` exclut les
+commandes annulées, regroupe les montants par menu et date, remplace la collection MongoDB puis
+permet les lectures filtrées. La reconstruction est idempotente pour un même état source.
+
 ## API disponible
 
 - `POST /api/v1/auth/register`

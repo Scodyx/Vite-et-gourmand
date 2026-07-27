@@ -3,6 +3,8 @@ package fr.vitegourmand.menu.entity;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.*;
+import fr.vitegourmand.dish.entity.Dish;
 
 @Entity
 @Table(name = "menu")
@@ -20,6 +22,10 @@ public class Menu {
     @Column(nullable = false) private String diet;
     @Column(name = "created_at", nullable = false) private Instant createdAt = Instant.now();
     @Column(name = "updated_at", nullable = false) private Instant updatedAt = Instant.now();
+    @ManyToMany @JoinTable(name="menu_dish",joinColumns=@JoinColumn(name="menu_id"),inverseJoinColumns=@JoinColumn(name="dish_id"))
+    private Set<Dish> dishes=new HashSet<>();
+    @OneToMany(mappedBy="menu",cascade=CascadeType.ALL,orphanRemoval=true)
+    @OrderBy("displayOrder ASC") private List<MenuImage> images=new ArrayList<>();
     public Long getId() { return id; }
     public String getTitle() { return title; }
     public String getSlug() { return slug; }
@@ -31,4 +37,17 @@ public class Menu {
     public boolean isActive() { return active; }
     public String getTheme() { return theme; }
     public String getDiet() { return diet; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public Set<Dish> getDishes(){return dishes;} public List<MenuImage> getImages(){return images;}
+    public void setTitle(String title) { this.title = title; }
+    public void setSlug(String slug) { this.slug = slug; }
+    public void setDescription(String description) { this.description = description; }
+    public void setConditions(String conditions) { this.conditions = conditions; }
+    public void setMinimumPersons(int minimumPersons) { this.minimumPersons = minimumPersons; }
+    public void setBasePrice(BigDecimal basePrice) { this.basePrice = basePrice; }
+    public void setAvailableStock(int availableStock) { this.availableStock = availableStock; }
+    public void setActive(boolean active) { this.active = active; }
+    public void setTheme(String theme) { this.theme = theme; }
+    public void setDiet(String diet) { this.diet = diet; }
+    public void touch() { this.updatedAt = Instant.now(); }
 }
