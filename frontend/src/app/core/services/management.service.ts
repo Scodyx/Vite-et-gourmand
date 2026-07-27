@@ -21,7 +21,6 @@ export class ManagementService{
  createAdminAllergen(name:string){return this.http.post<Allergen>(`${environment.apiUrl}/admin/allergens`,{name});}
  updateAdminAllergen(id:number,name:string){return this.http.put<Allergen>(`${environment.apiUrl}/admin/allergens/${id}`,{name});}
  dishes(){return this.http.get<Dish[]>(`${environment.apiUrl}/employee/dishes`);}
- createDish(value:object){return this.http.post<Dish>(`${environment.apiUrl}/employee/dishes`,value);}
  adminDishes(){return this.http.get<Dish[]>(`${environment.apiUrl}/admin/dishes`);}
  adminDish(id:number){return this.http.get<Dish>(`${environment.apiUrl}/admin/dishes/${id}`);}
  createAdminDish(value:object){return this.http.post<Dish>(`${environment.apiUrl}/admin/dishes`,value);}

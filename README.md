@@ -133,6 +133,21 @@ puis relancer le script ; ne jamais désactiver des comptes par une recherche la
 rôle. Le script n'affiche aucun mot de passe, JWT ou refresh token. Ne jamais commiter de mot de
 passe ni le fichier `.env`.
 
+### Audit et nettoyage ciblé des anciennes données smoke
+
+Le script fonctionne en lecture seule par défaut et cible exclusivement les préfixes générés par
+`smoke-privileged.ps1`. Il n'agit jamais sur tous les comptes `example.test`, un rôle entier ou
+une donnée dont l'origine est incertaine :
+
+```powershell
+.\scripts\cleanup-smoke-data.ps1        # audit uniquement
+.\scripts\cleanup-smoke-data.ps1 -Apply # application explicite
+```
+
+Le mode `-Apply` désactive les comptes, menus et plats correspondant exactement aux motifs smoke
+connus. Il détache uniquement les allergènes smoke de plats smoke, sans supprimer de compte,
+commande, avis ou allergène. PostgreSQL doit être démarré par Docker Compose.
+
 ## Git et liens
 
 Flux recommandé : `main` stable, `develop` pour l’intégration, branches `feature/*`, `fix/*` et `docs/*`. Commits conventionnels (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).

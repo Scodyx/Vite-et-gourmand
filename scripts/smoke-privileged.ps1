@@ -38,6 +38,11 @@ function Expect([string]$Name,$Response,[int[]]$Codes) {
     if($Response.Code-notin $Codes){throw "$Name returned HTTP $($Response.Code), expected $($Codes-join ' or ')"}
     Write-Output "$Name=$($Response.Code)"
 }
+function Expect-Curl([string]$Name,[string]$Uri,[int[]]$Codes) {
+    $code = [int](& curl.exe -s -o NUL -w "%{http_code}" $Uri)
+    if($LASTEXITCODE -ne 0 -or $code -notin $Codes){throw "$Name returned HTTP $code, expected $($Codes-join ' or ')"}
+    Write-Output "$Name=$code"
+}
 function Stop-ProcessTree([Diagnostics.Process]$Process) {
     if($null-eq $Process -or $Process.HasExited){return}
     Get-CimInstance Win32_Process -Filter "ParentProcessId=$($Process.Id)" -ErrorAction SilentlyContinue |
@@ -167,9 +172,18 @@ try {
     $ready=$false
     for($i=0;$i-lt 60;$i++){Start-Sleep 1;$health=Request GET "$base/public/reviews";if($health.Code-eq 200){$ready=$true;break};if($backendProcess.HasExited){break}}
     if(-not $ready){throw "Backend did not become ready."}
+    Expect-Curl SWAGGER_UI "http://127.0.0.1:8080/swagger-ui/index.html" 200
+    $openApi=Request GET "http://127.0.0.1:8080/v3/api-docs";Expect OPENAPI $openApi 200
+    if($null-eq $openApi.Content.components.securitySchemes.bearerAuth){throw "OpenAPI bearerAuth scheme is missing."}
+    Expect MAILPIT (Request GET "http://127.0.0.1:8025/api/v1/messages") 200
+    Expect CORS_PREFLIGHT (Request OPTIONS "$base/public/menus" @{Origin="http://localhost:4200";"Access-Control-Request-Method"="GET"}) 200
     Expect ANONYMOUS_EMPLOYEE (Request GET "$base/employee/orders") 401
     Expect ANONYMOUS_ADMIN (Request GET "$base/admin/employees") 401
     $admin=Request POST "$base/auth/login" @{} @{email=$AdminEmail;password=$AdminPassword};Expect ADMIN_LOGIN $admin 200
+    $rotatedAdmin=Request POST "$base/auth/refresh" @{} @{refreshToken=$admin.Content.refreshToken};Expect ADMIN_REFRESH $rotatedAdmin 200
+    Expect ADMIN_LOGOUT (Request POST "$base/auth/logout" @{} @{refreshToken=$rotatedAdmin.Content.refreshToken}) @(200,204)
+    Expect ADMIN_REVOKED_REFRESH (Request POST "$base/auth/refresh" @{} @{refreshToken=$rotatedAdmin.Content.refreshToken}) 401
+    $admin=$rotatedAdmin
     $ah=@{Authorization="Bearer $($admin.Content.accessToken)"}
     Expect ANONYMOUS_ADMIN_ALLERGENS (Request GET "$base/admin/allergens") 401
     $allergenPayload=@{name="Smoke API Allergen $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"}
