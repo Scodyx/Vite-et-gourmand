@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 export interface Allergen{id:number;name:string}
+export interface AdminAllergen extends Allergen{dishCount:number}
+export interface DishAllergens{dishId:number;dishName:string;allergens:Allergen[];allergenCount:number}
 export interface Dish{id:number;name:string;description:string|null;type:'ENTRY'|'MAIN_COURSE'|'DESSERT';active:boolean;allergens:Allergen[];menuCount:number}
 export interface Employee{id:number;firstName:string;lastName:string;email:string;phone:string;role:'EMPLOYEE';enabled:boolean;createdAt:string}
 export interface MenuStat{menuId:number;menuTitle:string;date:string;orderCount:number;grossRevenue:number;discountTotal:number;deliveryRevenue:number;totalRevenue:number}
@@ -14,7 +16,10 @@ export interface MenuDishes{menuId:number;title:string;active:boolean;dishes:Men
 export class ManagementService{
  constructor(private http:HttpClient){}
  allergens(){return this.http.get<Allergen[]>(`${environment.apiUrl}/employee/allergens`);}
- createAllergen(name:string){return this.http.post<Allergen>(`${environment.apiUrl}/employee/allergens`,{name});}
+ adminAllergens(){return this.http.get<AdminAllergen[]>(`${environment.apiUrl}/admin/allergens`);}
+ adminAllergen(id:number){return this.http.get<AdminAllergen>(`${environment.apiUrl}/admin/allergens/${id}`);}
+ createAdminAllergen(name:string){return this.http.post<Allergen>(`${environment.apiUrl}/admin/allergens`,{name});}
+ updateAdminAllergen(id:number,name:string){return this.http.put<Allergen>(`${environment.apiUrl}/admin/allergens/${id}`,{name});}
  dishes(){return this.http.get<Dish[]>(`${environment.apiUrl}/employee/dishes`);}
  createDish(value:object){return this.http.post<Dish>(`${environment.apiUrl}/employee/dishes`,value);}
  adminDishes(){return this.http.get<Dish[]>(`${environment.apiUrl}/admin/dishes`);}
@@ -22,6 +27,10 @@ export class ManagementService{
  createAdminDish(value:object){return this.http.post<Dish>(`${environment.apiUrl}/admin/dishes`,value);}
  updateAdminDish(id:number,value:object){return this.http.put<Dish>(`${environment.apiUrl}/admin/dishes/${id}`,value);}
  enableDish(id:number,value:boolean){return this.http.patch<Dish>(`${environment.apiUrl}/admin/dishes/${id}/enabled`,null,{params:{value}});}
+ dishAllergens(id:number){return this.http.get<DishAllergens>(`${environment.apiUrl}/admin/dishes/${id}/allergens`);}
+ setDishAllergens(id:number,allergenIds:number[]){return this.http.put<DishAllergens>(`${environment.apiUrl}/admin/dishes/${id}/allergens`,{allergenIds});}
+ addDishAllergen(id:number,allergenId:number){return this.http.post<DishAllergens>(`${environment.apiUrl}/admin/dishes/${id}/allergens/${allergenId}`,{});}
+ removeDishAllergen(id:number,allergenId:number){return this.http.delete<DishAllergens>(`${environment.apiUrl}/admin/dishes/${id}/allergens/${allergenId}`);}
  employees(){return this.http.get<Employee[]>(`${environment.apiUrl}/admin/employees`);}
  createEmployee(value:object){return this.http.post<Employee>(`${environment.apiUrl}/admin/employees`,value);}
  enableEmployee(id:number,value:boolean){return this.http.patch<Employee>(`${environment.apiUrl}/admin/employees/${id}/enabled`,null,{params:{value}});}

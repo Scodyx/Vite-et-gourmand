@@ -68,4 +68,12 @@ describe('ManagementService admin API', () => {
     const replace=http.expectOne(`${environment.apiUrl}/admin/menus/2/dishes`);
     expect(replace.request.method).toBe('PUT');expect(replace.request.body).toEqual({dishIds:[8,9]});
   });
+  it('uses ADMIN allergen CRUD and atomic dish association endpoints',()=>{
+    service.adminAllergens().subscribe();http.expectOne(`${environment.apiUrl}/admin/allergens`).flush([]);
+    service.createAdminAllergen('Gluten').subscribe();expect(http.expectOne(`${environment.apiUrl}/admin/allergens`).request.method).toBe('POST');
+    service.updateAdminAllergen(3,'Lait').subscribe();expect(http.expectOne(`${environment.apiUrl}/admin/allergens/3`).request.method).toBe('PUT');
+    service.dishAllergens(9).subscribe();http.expectOne(`${environment.apiUrl}/admin/dishes/9/allergens`).flush({allergens:[]});
+    service.setDishAllergens(9,[3,4]).subscribe();const r=http.expectOne(`${environment.apiUrl}/admin/dishes/9/allergens`);
+    expect(r.request.method).toBe('PUT');expect(r.request.body).toEqual({allergenIds:[3,4]});
+  });
 });

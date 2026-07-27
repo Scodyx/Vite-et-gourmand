@@ -129,11 +129,14 @@ function Start-EmployeeBrowserSmoke {
     $env:E2E_ASSOC_DISH_ONE_NAME="$($dishPayload.name)"
     $env:E2E_ASSOC_DISH_TWO_ID="$adminDishTwoId"
     $env:E2E_ASSOC_DISH_TWO_NAME="$($dishTwoPayload.name)"
+    $env:E2E_ALLERGEN_DISH_ID="$adminDishId"
+    $env:E2E_ALLERGEN_ONE_NAME=$allergenPayload.name
+    $env:E2E_ALLERGEN_TWO_NAME=$allergenTwoPayload.name
     try {
         & npm.cmd run e2e:smoke --prefix $frontend
         if($LASTEXITCODE-ne 0){throw "Playwright employee smoke test failed."}
     } finally {
-        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE,Env:E2E_ADMIN_DISH_NAME,Env:E2E_ASSOC_MENU_ID,Env:E2E_ASSOC_MENU_SLUG,Env:E2E_ASSOC_DISH_ONE_ID,Env:E2E_ASSOC_DISH_ONE_NAME,Env:E2E_ASSOC_DISH_TWO_ID,Env:E2E_ASSOC_DISH_TWO_NAME -ErrorAction SilentlyContinue
+        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE,Env:E2E_ADMIN_DISH_NAME,Env:E2E_ASSOC_MENU_ID,Env:E2E_ASSOC_MENU_SLUG,Env:E2E_ASSOC_DISH_ONE_ID,Env:E2E_ASSOC_DISH_ONE_NAME,Env:E2E_ASSOC_DISH_TWO_ID,Env:E2E_ASSOC_DISH_TWO_NAME,Env:E2E_ALLERGEN_DISH_ID,Env:E2E_ALLERGEN_ONE_NAME,Env:E2E_ALLERGEN_TWO_NAME -ErrorAction SilentlyContinue
     }
 }
 if(-not(Test-Path -LiteralPath $jar)){throw "Build the backend JAR first."}
@@ -168,6 +171,16 @@ try {
     Expect ANONYMOUS_ADMIN (Request GET "$base/admin/employees") 401
     $admin=Request POST "$base/auth/login" @{} @{email=$AdminEmail;password=$AdminPassword};Expect ADMIN_LOGIN $admin 200
     $ah=@{Authorization="Bearer $($admin.Content.accessToken)"}
+    Expect ANONYMOUS_ADMIN_ALLERGENS (Request GET "$base/admin/allergens") 401
+    $allergenPayload=@{name="Smoke API Allergen $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"}
+    $allergenOne=Request POST "$base/admin/allergens" $ah $allergenPayload;Expect ADMIN_CREATE_ALLERGEN $allergenOne 201;$allergenOneId=$allergenOne.Content.id
+    $allergenPayload.name="$($allergenPayload.name) Updated";Expect ADMIN_UPDATE_ALLERGEN (Request PUT "$base/admin/allergens/$allergenOneId" $ah $allergenPayload) 200
+    $allergenTwoPayload=@{name="Smoke API Allergen Second $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"}
+    $allergenTwo=Request POST "$base/admin/allergens" $ah $allergenTwoPayload;Expect ADMIN_CREATE_SECOND_ALLERGEN $allergenTwo 201;$allergenTwoId=$allergenTwo.Content.id
+    Expect ADMIN_LIST_ALLERGENS (Request GET "$base/admin/allergens" $ah) 200
+    Expect ADMIN_ALLERGEN_DETAIL (Request GET "$base/admin/allergens/$allergenOneId" $ah) 200
+    Expect ADMIN_INVALID_ALLERGEN (Request POST "$base/admin/allergens" $ah @{name=" "}) 400
+    Expect ADMIN_DUPLICATE_ALLERGEN (Request POST "$base/admin/allergens" $ah $allergenPayload) 409
     Expect ANONYMOUS_ADMIN_DISHES (Request GET "$base/admin/dishes") 401
     $dishPayload=@{name=$smokeDishName;description="Plat de validation automatique";type="MAIN_COURSE";active=$true}
     $adminDish=Request POST "$base/admin/dishes" $ah $dishPayload;Expect ADMIN_CREATE_DISH $adminDish 201;$adminDishId=$adminDish.Content.id
@@ -181,6 +194,13 @@ try {
     Expect ADMIN_REACTIVATE_DISH (Request PATCH "$base/admin/dishes/$adminDishId/enabled?value=true" $ah) 200
     $dishTwoPayload=@{name="$smokeDishName Second";description="Second plat de validation";type="DESSERT";active=$true}
     $adminDishTwo=Request POST "$base/admin/dishes" $ah $dishTwoPayload;Expect ADMIN_CREATE_SECOND_DISH $adminDishTwo 201;$adminDishTwoId=$adminDishTwo.Content.id
+    Expect ADMIN_DISH_ALLERGENS_EMPTY (Request GET "$base/admin/dishes/$adminDishId/allergens" $ah) 200
+    Expect ADMIN_ADD_DISH_ALLERGEN (Request POST "$base/admin/dishes/$adminDishId/allergens/$allergenOneId" $ah @{}) 200
+    Expect ADMIN_DUPLICATE_DISH_ALLERGEN (Request POST "$base/admin/dishes/$adminDishId/allergens/$allergenOneId" $ah @{}) 409
+    Expect ADMIN_REPLACE_DISH_ALLERGENS (Request PUT "$base/admin/dishes/$adminDishId/allergens" $ah @{allergenIds=@($allergenOneId,$allergenTwoId)}) 200
+    Expect ADMIN_UNKNOWN_ALLERGEN_ASSOCIATION (Request POST "$base/admin/dishes/$adminDishId/allergens/999999999" $ah @{}) 404
+    Expect ADMIN_REMOVE_DISH_ALLERGEN (Request DELETE "$base/admin/dishes/$adminDishId/allergens/$allergenOneId" $ah) 200
+    Expect ADMIN_REMOVE_ABSENT_DISH_ALLERGEN (Request DELETE "$base/admin/dishes/$adminDishId/allergens/$allergenOneId" $ah) 409
     Expect ANONYMOUS_ADMIN_MENUS (Request GET "$base/admin/menus") 401
     $menuPayload=@{title=$smokeMenuTitle;description="Menu de validation automatique";conditions="Commande de test";minimumPersons=4;basePrice=15.50;availableStock=40;active=$true;theme="Smoke";diet="Classique";imageUrl=$null}
     $adminMenu=Request POST "$base/admin/menus" $ah $menuPayload;Expect ADMIN_CREATE_MENU $adminMenu 201;$adminMenuId=$adminMenu.Content.id;$adminMenuSlug=$adminMenu.Content.slug
@@ -193,6 +213,8 @@ try {
     Expect ADMIN_UNKNOWN_DISH_ASSOCIATION (Request POST "$base/admin/menus/$adminMenuId/dishes/999999999" $ah @{}) 404
     Expect ADMIN_MENU_DISHES_EMPTY (Request GET "$base/admin/menus/$adminMenuId/dishes" $ah) 200
     Expect ADMIN_ADD_MENU_DISH (Request POST "$base/admin/menus/$adminMenuId/dishes/$adminDishId" $ah @{}) 200
+    $publicMenuWithAllergen=Request GET "$base/public/menus/$adminMenuSlug";Expect PUBLIC_MENU_ALLERGENS $publicMenuWithAllergen 200
+    if(-not (($publicMenuWithAllergen.Content.dishes|ForEach-Object{$_.allergens}) -contains $allergenTwoPayload.name)){throw "The associated allergen is missing from the public menu detail."}
     Expect ADMIN_DUPLICATE_MENU_DISH (Request POST "$base/admin/menus/$adminMenuId/dishes/$adminDishId" $ah @{}) 409
     Expect ADMIN_DISABLE_SECOND_DISH (Request PATCH "$base/admin/dishes/$adminDishTwoId/enabled?value=false" $ah) 200
     Expect ADMIN_REJECT_INACTIVE_MENU_DISH (Request POST "$base/admin/menus/$adminMenuId/dishes/$adminDishTwoId" $ah @{}) 409
@@ -235,6 +257,7 @@ try {
     Expect EMPLOYEE_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $eh) 403
     Expect EMPLOYEE_ADMIN_DISHES_FORBIDDEN (Request GET "$base/admin/dishes" $eh) 403
     Expect EMPLOYEE_MENU_DISHES_FORBIDDEN (Request GET "$base/admin/menus/$adminMenuId/dishes" $eh) 403
+    Expect EMPLOYEE_ADMIN_ALLERGENS_FORBIDDEN (Request GET "$base/admin/allergens" $eh) 403
     $user=Request POST "$base/auth/register" @{} @{firstName="Smoke";lastName="Customer";phone="0600000001";email=$userEmail;
       addressLine="1 rue Test";postalCode="33000";city="Bordeaux";country="France";password=$userPassword;termsAccepted=$true}
     Expect USER_REGISTER $user 201;$userCreated=$true;$uh=@{Authorization="Bearer $($user.Content.accessToken)"}
@@ -242,6 +265,7 @@ try {
     Expect USER_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $uh) 403
     Expect USER_ADMIN_DISHES_FORBIDDEN (Request GET "$base/admin/dishes" $uh) 403
     Expect USER_MENU_DISHES_FORBIDDEN (Request GET "$base/admin/menus/$adminMenuId/dishes" $uh) 403
+    Expect USER_ADMIN_ALLERGENS_FORBIDDEN (Request GET "$base/admin/allergens" $uh) 403
     $inactiveOrder=@{menuId=$adminMenuId;personCount=4;prestationDate=(Get-Date).Date.AddDays(9).ToString("yyyy-MM-dd");desiredDeliveryTime="12:00";deliveryAddress="1 rue Test";deliveryPostalCode="33000";deliveryCity="Bordeaux";deliveryCountry="France";distanceKm=0;outsideBordeaux=$false;equipmentLoaned=$false}
     Expect USER_INACTIVE_MENU_ORDER (Request POST "$base/orders" $uh $inactiveOrder) 404
     $menus=Request GET "$base/public/menus?size=1";Expect PUBLIC_MENUS $menus 200;$menu=$menus.Content.content|Select-Object -First 1
@@ -275,6 +299,10 @@ try {
 } catch {
     $scenarioError=$_
 } finally {
+    if($adminDishId -and $ah){
+        try {Expect ADMIN_ALLERGEN_ASSOCIATIONS_CLEANUP (Request PUT "$base/admin/dishes/$adminDishId/allergens" $ah @{allergenIds=@()}) 200}
+        catch {$cleanupErrors.Add("API allergen association cleanup failed: $($_.Exception.Message)")}
+    }
     try {
         $browserDishes=(Disable-SmokeDish "$browserDishName Updated")+(Disable-SmokeDish $browserDishName)
         if($browserDishes-gt 0){Write-Output "BROWSER_DISH_CLEANUP=DEACTIVATED"}

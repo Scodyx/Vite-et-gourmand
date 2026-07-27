@@ -177,3 +177,22 @@ test('admin explicitly manages menu dish associations', async ({ page }) => {
   expect((await inactiveDetail.json()).dishes.map((d:{name:string})=>d.name)).not.toContain(secondName);
   expect(errors).toEqual([]);
 });
+
+test('admin explicitly manages dish allergen associations', async ({ page }) => {
+  const email=process.env['E2E_ADMIN_EMAIL'];const password=process.env['E2E_ADMIN_PASSWORD'];
+  const dishId=process.env['E2E_ALLERGEN_DISH_ID'];const firstName=process.env['E2E_ALLERGEN_ONE_NAME'];const secondName=process.env['E2E_ALLERGEN_TWO_NAME'];
+  if(!email||!password||!dishId||!firstName||!secondName)throw new Error('Temporary allergen smoke values are required.');
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(`/connexion?returnUrl=${encodeURIComponent(`/admin/plats/${dishId}`)}`);
+  await page.getByLabel('Adresse e-mail').fill(email);await page.getByLabel('Mot de passe').fill(password);await page.getByRole('button',{name:'Se connecter'}).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/plats/${dishId}$`));
+  const first=page.locator('label.card').filter({hasText:firstName});const second=page.locator('label.card').filter({hasText:secondName});
+  await first.locator('input').check();await second.locator('input').check();
+  const replace=page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().endsWith(`/admin/dishes/${dishId}/allergens`));
+  await page.getByRole('button',{name:'Enregistrer les allergènes'}).click();expect((await replace).status()).toBe(200);
+  await expect(page.getByRole('heading',{name:/Allergènes · 2/})).toBeVisible();
+  page.once('dialog',dialog=>dialog.accept());await first.locator('input').uncheck();
+  const remove=page.waitForResponse(r=>r.request().method()==='PUT'&&r.url().endsWith(`/admin/dishes/${dishId}/allergens`));
+  await page.getByRole('button',{name:'Enregistrer les allergènes'}).click();expect((await remove).status()).toBe(200);
+  await expect(page.getByRole('heading',{name:/Allergènes · 1/})).toBeVisible();expect(errors).toEqual([]);
+});

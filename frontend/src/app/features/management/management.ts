@@ -15,16 +15,14 @@ export class ProfileComponent{
 }
 
 @Component({standalone:true,imports:[FormsModule],template:`<section class="container section"><h1>Plats et allergènes</h1>
-<form class="form-card" (ngSubmit)="addAllergen()"><label>Nouvel allergène<input [(ngModel)]="allergenName" name="allergenName" required></label><button class="button small">Ajouter</button></form>
 <div class="card"><h2>Allergènes</h2>@for(a of allergens();track a.id){<span class="tag">{{a.name}} </span>}@empty{<p>Aucun allergène.</p>}</div>
 <form class="form-card wide" (ngSubmit)="addDish()"><h2>Nouveau plat</h2><label>Nom<input [(ngModel)]="dish.name" name="name" required></label>
 <label>Description<textarea [(ngModel)]="dish.description" name="description"></textarea></label><label>Type<select [(ngModel)]="dish.type" name="type">
 <option value="ENTRY">Entrée</option><option value="MAIN_COURSE">Plat</option><option value="DESSERT">Dessert</option></select></label>
 <button class="button">Créer le plat</button></form><div class="cards">@for(d of dishes();track d.id){<article class="card"><h2>{{d.name}}</h2><p>{{d.description}}</p><span class="tag">{{d.type}}</span></article>}</div></section>`})
 export class CatalogManagementComponent{
- private api=inject(ManagementService);allergens=signal<Allergen[]>([]);dishes=signal<Dish[]>([]);allergenName='';dish={name:'',description:'',type:'ENTRY',active:true,allergenIds:[] as number[]};
+ private api=inject(ManagementService);allergens=signal<Allergen[]>([]);dishes=signal<Dish[]>([]);dish={name:'',description:'',type:'ENTRY',active:true,allergenIds:[] as number[]};
  constructor(){this.load();}load(){this.api.allergens().subscribe(v=>this.allergens.set(v));this.api.dishes().subscribe(v=>this.dishes.set(v));}
- addAllergen(){if(!this.allergenName.trim())return;this.api.createAllergen(this.allergenName).subscribe(()=>{this.allergenName='';this.load();});}
  addDish(){this.api.createDish(this.dish).subscribe(()=>{this.dish={name:'',description:'',type:'ENTRY',active:true,allergenIds:[]};this.load();});}
 }
 

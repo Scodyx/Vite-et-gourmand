@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Dish, ManagementService } from '../../core/services/management.service';
+import { forkJoin } from 'rxjs';
 
 const labels:Record<string,string>={ENTRY:'Entrée',MAIN_COURSE:'Plat principal',DESSERT:'Dessert'};
 
@@ -17,14 +18,24 @@ export class AdminDishListComponent{
  constructor(){this.load();}load(){this.loading.set(true);this.api.adminDishes().subscribe({next:v=>{this.dishes.set(v);this.loading.set(false);},error:()=>{this.error.set('Impossible de charger les plats.');this.loading.set(false);}});}
 }
 
-@Component({standalone:true,imports:[RouterLink],template:`
+@Component({standalone:true,imports:[FormsModule,RouterLink],template:`
 <section class="container section">@if(dish();as d){<a routerLink="/admin/plats">Retour aux plats</a><h1>{{d.name}}</h1><p>{{d.description||'Aucune description.'}}</p><p><span class="tag">{{label(d.type)}}</span> <span class="tag">{{d.active?'Actif':'Inactif'}}</span></p>
 <h2>Associations en lecture seule</h2><p>{{d.menuCount}} menu(s) utilise(nt) ce plat.</p><p>Allergènes : @for(a of d.allergens;track a.id){<span class="tag">{{a.name}}</span>}@empty{aucun}</p>
 <a class="button" [routerLink]="['/admin/plats',d.id,'modifier']">Modifier</a> <button class="button secondary" [disabled]="processing()" (click)="toggle()">{{d.active?'Désactiver':'Réactiver'}}</button>
+<section class="card"><h2>Allergènes · {{selected.size}}</h2><label>Rechercher<input [(ngModel)]="search" name="allergenSearch"></label>
+@if(associationsLoading()){<p role="status">Chargement…</p>}@else{<div class="cards">@for(a of filtered();track a.id){<label class="card check"><input type="checkbox" [checked]="selected.has(a.id)" (change)="select(a.id,a.name,$event)">{{a.name}}</label>}@empty{<p>Aucun allergène.</p>}</div>
+<button class="button" [disabled]="saving()||!changed()" (click)="save()">Enregistrer les allergènes</button> <button class="button secondary" [disabled]="saving()||!changed()" (click)="cancel()">Annuler</button>}
+@if(message()){<p class="alert" aria-live="polite">{{message()}}</p>}</section>
 }@else if(error()){<p class="alert" role="alert">{{error()}}</p>}@else{<p role="status">Chargement…</p>}</section>`})
 export class AdminDishDetailComponent{
  private api=inject(ManagementService);private route=inject(ActivatedRoute);dish=signal<Dish|null>(null);error=signal('');processing=signal(false);label=(v:string)=>labels[v]??v;
- constructor(){this.load();}load(){this.api.adminDish(Number(this.route.snapshot.paramMap.get('id'))).subscribe({next:v=>this.dish.set(v),error:e=>this.error.set(e.status===404?'Plat introuvable.':'Chargement impossible.')});}
+ all=signal<{id:number;name:string}[]>([]);associationsLoading=signal(true);saving=signal(false);message=signal('');selected=new Set<number>();private saved=new Set<number>();search='';
+ filtered(){const q=this.search.trim().toLowerCase();return this.all().filter(a=>!q||a.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));}
+ constructor(){this.load();}load(){this.api.adminDish(Number(this.route.snapshot.paramMap.get('id'))).subscribe({next:v=>{this.dish.set(v);this.loadAllergens();},error:e=>this.error.set(e.status===404?'Plat introuvable.':'Chargement impossible.')});}
+ loadAllergens(){const d=this.dish();if(!d)return;this.associationsLoading.set(true);forkJoin({all:this.api.adminAllergens(),linked:this.api.dishAllergens(d.id)}).subscribe({next:r=>{this.all.set(r.all);this.saved=new Set(r.linked.allergens.map(a=>a.id));this.selected=new Set(this.saved);this.associationsLoading.set(false);},error:()=>{this.message.set('Chargement des allergènes impossible.');this.associationsLoading.set(false);}});}
+ select(id:number,name:string,event:Event){const checked=(event.target as HTMLInputElement).checked;if(!checked&&this.saved.has(id)&&!confirm(`Retirer ${name} du plat ?`)){(event.target as HTMLInputElement).checked=true;return;}if(checked)this.selected.add(id);else this.selected.delete(id);}
+ changed(){return this.selected.size!==this.saved.size||[...this.selected].some(id=>!this.saved.has(id));}cancel(){this.selected=new Set(this.saved);this.message.set('Changements annulés.');}
+ save(){const d=this.dish();if(!d||!this.changed()||this.saving())return;this.saving.set(true);this.api.setDishAllergens(d.id,[...this.selected]).subscribe({next:()=>{this.saving.set(false);this.message.set('Allergènes enregistrés.');this.load();},error:e=>{this.saving.set(false);this.message.set(e.error?.message??'Enregistrement impossible.');this.loadAllergens();}});}
  toggle(){const d=this.dish();if(!d||!confirm(`${d.active?'Désactiver':'Réactiver'} ce plat ?`))return;this.processing.set(true);this.api.enableDish(d.id,!d.active).subscribe({next:v=>{this.dish.set(v);this.processing.set(false);},error:()=>{this.error.set('Modification impossible.');this.processing.set(false);}});}
 }
 
