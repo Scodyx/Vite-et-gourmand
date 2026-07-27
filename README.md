@@ -84,6 +84,33 @@ Set-Location ..
 docker compose config
 ```
 
+## Initialisation et smoke test privilégié
+
+En profil `dev`, le premier administrateur n'est créé que si `INITIAL_ADMIN_ENABLED=true`,
+`INITIAL_ADMIN_EMAIL` et `INITIAL_ADMIN_PASSWORD` sont explicitement fournis. L'e-mail est
+normalisé, le mot de passe est haché avec BCrypt et un compte existant n'est jamais modifié.
+Aucune valeur secrète par défaut n'est définie.
+
+```powershell
+$env:INITIAL_ADMIN_ENABLED = "true"
+$env:INITIAL_ADMIN_EMAIL = "admin.local@example.test"
+$env:INITIAL_ADMIN_PASSWORD = Read-Host "Mot de passe temporaire"
+Set-Location backend
+.\mvnw.cmd spring-boot:run
+```
+
+Après `docker compose up -d` et `.\mvnw.cmd clean package`, le smoke test privilégié génère
+en mémoire des identifiants uniques, crée l'EMPLOYEE via l'API ADMIN réelle, vérifie les permissions
+et désactive ensuite cet EMPLOYEE :
+
+```powershell
+Set-Location ..
+.\scripts\smoke-privileged.ps1
+```
+
+Le script n'affiche aucun mot de passe, JWT ou refresh token. Ne jamais commiter de mot de passe
+ni le fichier `.env`.
+
 ## Git et liens
 
 Flux recommandé : `main` stable, `develop` pour l’intégration, branches `feature/*`, `fix/*` et `docs/*`. Commits conventionnels (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).

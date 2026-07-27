@@ -18,9 +18,7 @@ describe('EmployeeDashboardComponent', () => {
   afterEach(() => http.verify());
 
   it('derives counters from real orders and loads pending reviews', () => {
-    http.expectOne(request => request.url.endsWith('/employee/orders?size=100')).flush({
-      content: [item('PENDING', 9), item('IN_PREPARATION', 10)]
-    });
+    flushDashboard([item('PENDING', 9)], { PENDING: 1, IN_PREPARATION: 1 });
     http.expectOne(request => request.url.endsWith('/employee/reviews/pending')).flush([{ id: 1 }, { id: 2 }]);
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
@@ -29,12 +27,25 @@ describe('EmployeeDashboardComponent', () => {
   });
 
   it('reports loading errors instead of inventing counters', () => {
-    http.expectOne(request => request.url.endsWith('/employee/orders?size=100'))
-      .flush({}, { status: 500, statusText: 'Error' });
+    const requests=http.match(request=>request.url.endsWith('/employee/orders'));
     http.expectOne(request => request.url.endsWith('/employee/reviews/pending')).flush([]);
+    requests.filter(request=>request.request.params.has('status')).forEach(request=>request.flush(paged([])));
+    requests.find(request=>!request.request.params.has('status'))!.flush({}, { status: 500, statusText: 'Error' });
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Impossible de charger les commandes');
+    expect(fixture.nativeElement.textContent).toContain('Impossible de charger le tableau de bord');
   });
+
+  function flushDashboard(recent: ReturnType<typeof item>[], counts: Partial<Record<string, number>>) {
+    const requests=http.match(request=>request.url.endsWith('/employee/orders'));
+    expect(requests.length).toBe(6);
+    requests.forEach(request=>{
+      const status=request.request.params.get('status');
+      request.flush(paged(status ? [] : recent, counts[status ?? ''] ?? recent.length));
+    });
+  }
+  function paged(content: ReturnType<typeof item>[], total=content.length) {
+    return { content, page:0, size:5, totalElements:total, totalPages:total?1:0, first:true, last:true };
+  }
 
   function item(status: 'PENDING' | 'IN_PREPARATION', id: number) {
     return {

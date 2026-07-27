@@ -76,8 +76,16 @@ public class SecurityConfiguration {
                 .authenticationProvider(authenticationProvider)
 
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(HttpStatus.UNAUTHORIZED.value(), "Authentification requise"))
+                        .authenticationEntryPoint((request, response, exception) -> {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"message\":\"Authentification requise\"}");
+                        })
+                        .accessDeniedHandler((request, response, exception) -> {
+                            response.setStatus(HttpStatus.FORBIDDEN.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"message\":\"Accès interdit\"}");
+                        })
                 )
 
                 .authorizeHttpRequests(auth -> auth

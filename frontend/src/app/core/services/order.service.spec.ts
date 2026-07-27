@@ -49,7 +49,9 @@ describe('OrderService', () => {
 
   it('uses employee list, detail and transition endpoints', () => {
     service.employeeOrders().subscribe();
-    expect(http.expectOne(r => r.url.endsWith('/employee/orders?size=100')).request.method).toBe('GET');
+    const list=http.expectOne(r => r.url.endsWith('/employee/orders'));
+    expect(list.request.method).toBe('GET');
+    expect(list.request.params.get('page')).toBe('0');expect(list.request.params.get('size')).toBe('20');
     service.employeeDetail(9).subscribe();
     expect(http.expectOne(r => r.url.endsWith('/employee/orders/9')).request.method).toBe('GET');
     service.transition(9, 'ACCEPTED', 'Commande validée').subscribe();

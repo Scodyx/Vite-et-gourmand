@@ -25,4 +25,12 @@ export interface OrderUpdate {
  deliveryPostalCode:string;deliveryCity:string;deliveryCountry:string;distanceKm:number;
 }
 export type OrderPage=Page<Order>;
-export type EmployeeOrderPage=Page<EmployeeOrder>;
+export interface EmployeeOrderPage {
+ content:EmployeeOrder[];page:number;size:number;totalElements:number;totalPages:number;first:boolean;last:boolean;
+}
+export type EmployeeOrderSort='createdAt'|'serviceDate'|'totalAmount'|'status'|'orderNumber';
+export type SortDirection='asc'|'desc';
+export interface EmployeeOrderQuery {
+ page:number;size:number;sort:EmployeeOrderSort;direction:SortDirection;status?:OrderStatus;
+ dateFrom?:string;dateTo?:string;search?:string;today?:boolean;upcoming?:boolean;
+}

@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.*;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.List;
-public interface CustomerOrderRepository extends JpaRepository<CustomerOrder,Long>{
+public interface CustomerOrderRepository extends JpaRepository<CustomerOrder,Long>,JpaSpecificationExecutor<CustomerOrder>{
  Page<CustomerOrder> findByCustomerEmailIgnoreCaseOrderByCreatedAtDesc(String email,Pageable pageable);
  Page<CustomerOrder> findAllByOrderByCreatedAtDesc(Pageable pageable);
  Optional<CustomerOrder> findByIdAndCustomerEmailIgnoreCase(Long id,String email);

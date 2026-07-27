@@ -36,4 +36,13 @@ public final class OrderDtos {
   }
  }
  public record EmployeeDetail(EmployeeView summary,List<History> history){}
+ public record EmployeePage(List<EmployeeView> content,int page,int size,long totalElements,int totalPages,
+  boolean first,boolean last){
+  public static EmployeePage from(org.springframework.data.domain.Page<EmployeeView> page){
+   return new EmployeePage(page.getContent(),page.getNumber(),page.getSize(),page.getTotalElements(),
+    page.getTotalPages(),page.isFirst(),page.isLast());
+  }
+ }
+ public record EmployeeQuery(int page,int size,String sort,String direction,OrderStatus status,
+  LocalDate dateFrom,LocalDate dateTo,String search,boolean today,boolean upcoming){}
 }

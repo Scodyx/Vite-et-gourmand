@@ -5,6 +5,7 @@ import { EmployeeOrder, OrderStatus } from '../../core/models/order';
 import { orderStatusLabel } from '../../core/models/order-status';
 import { BusinessService } from '../../core/services/business.service';
 import { OrderService } from '../../core/services/order.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   standalone: true,
@@ -51,16 +52,15 @@ export class EmployeeDashboardComponent {
   constructor() { this.load(); }
   load(): void {
     this.loading.set(true); this.error.set('');
-    let pending = 2;
-    const done = () => { pending--; if (!pending) this.loading.set(false); };
-    this.ordersApi.employeeOrders().subscribe({
-      next: page => { this.orders.set(page.content); done(); },
-      error: () => { this.error.set('Impossible de charger les commandes.'); done(); }
-    });
-    this.business.pendingReviews().subscribe({
-      next: reviews => { this.pendingReviews.set(reviews.length); done(); },
-      error: () => { this.error.set('Impossible de charger les avis.'); done(); }
-    });
+    const statuses:OrderStatus[]=['PENDING','ACCEPTED','IN_PREPARATION','OUT_FOR_DELIVERY','WAITING_FOR_EQUIPMENT_RETURN'];
+    forkJoin({
+      recent:this.ordersApi.employeeOrders({page:0,size:5,sort:'createdAt',direction:'desc'}),
+      reviews:this.business.pendingReviews(),
+      counts:forkJoin(statuses.map(status=>this.ordersApi.employeeOrders({page:0,size:1,sort:'createdAt',direction:'desc',status})))
+    }).subscribe({next:result=>{this.orders.set(result.recent.content);this.pendingReviews.set(result.reviews.length);
+      this.statusCounts=new Map(statuses.map((status,index)=>[status,result.counts[index].totalElements]));this.loading.set(false);},
+      error:()=>{this.error.set('Impossible de charger le tableau de bord.');this.loading.set(false);}});
   }
-  count(status: OrderStatus): number { return this.orders().filter(item => item.order.status === status).length; }
+  private statusCounts=new Map<OrderStatus,number>();
+  count(status: OrderStatus): number { return this.statusCounts.get(status)??0; }
 }

@@ -26,18 +26,18 @@ public class InitialAdminConfiguration {
             @Value("${app.bootstrap-admin.last-name}") String lastName
     ) {
         return args -> {
+            String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
             if (!enabled
-                    || email == null
-                    || email.isBlank()
+                    || normalizedEmail.isBlank()
                     || password == null
                     || password.isBlank()
-                    || userRepository.existsByEmailIgnoreCase(email)) {
+                    || userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
                 return;
             }
 
             User admin = new User();
 
-            admin.setEmail(email.trim().toLowerCase(Locale.ROOT));
+            admin.setEmail(normalizedEmail);
             admin.setPasswordHash(passwordEncoder.encode(password));
             admin.setFirstName(firstName);
             admin.setLastName(lastName);

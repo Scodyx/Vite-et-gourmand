@@ -3,6 +3,7 @@ package fr.vitegourmand.common.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.*;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.Map;
@@ -28,6 +29,14 @@ public class GlobalExceptionHandler {
                 e -> e.getField(), e -> e.getDefaultMessage() == null ? "Valeur invalide" : e.getDefaultMessage(),
                 (a, b) -> a));
         return response(HttpStatus.BAD_REQUEST, "La requête contient des erreurs", req, fields);
+    }
+    @ExceptionHandler(InvalidRequestException.class)
+    ResponseEntity<ApiError> invalidRequest(InvalidRequestException ex, HttpServletRequest req) {
+        return response(HttpStatus.BAD_REQUEST, ex.getMessage(), req, Map.of());
+    }
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> invalidParameter(MethodArgumentTypeMismatchException ex, HttpServletRequest req) {
+        return response(HttpStatus.BAD_REQUEST, "Paramètre invalide : " + ex.getName(), req, Map.of());
     }
     private ResponseEntity<ApiError> response(HttpStatus status, String message, HttpServletRequest req,
                                                Map<String, String> fields) {
