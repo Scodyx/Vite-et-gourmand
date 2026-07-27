@@ -7,6 +7,7 @@ export interface Employee{id:number;firstName:string;lastName:string;email:strin
 export interface MenuStat{menuId:number;menuTitle:string;date:string;orderCount:number;grossRevenue:number;discountTotal:number;deliveryRevenue:number;totalRevenue:number}
 export interface RevenueSummary{orderCount:number;grossRevenue:number;discountTotal:number;deliveryRevenue:number;totalRevenue:number}
 export interface OpeningHours{id:number;dayOfWeek:string;openingTime:string|null;closingTime:string|null;closed:boolean;displayOrder:number}
+export interface AdminMenu{id:number;title:string;slug:string;description:string;conditions:string;minimumPersons:number;basePrice:number;availableStock:number;active:boolean;theme:string;diet:string;imageUrl:string|null;updatedAt:string}
 @Injectable({providedIn:'root'})
 export class ManagementService{
  constructor(private http:HttpClient){}
@@ -22,4 +23,9 @@ export class ManagementService{
  rebuildStatistics(){return this.http.post<MenuStat[]>(`${environment.apiUrl}/admin/statistics/rebuild`,{});}
  openingHours(){return this.http.get<OpeningHours[]>(`${environment.apiUrl}/admin/opening-hours`);}
  updateOpeningHours(value:OpeningHours){return this.http.put<OpeningHours>(`${environment.apiUrl}/admin/opening-hours/${value.id}`,value);}
+ menus(){return this.http.get<AdminMenu[]>(`${environment.apiUrl}/admin/menus`);}
+ menu(id:number){return this.http.get<AdminMenu>(`${environment.apiUrl}/admin/menus/${id}`);}
+ createMenu(value:object){return this.http.post<AdminMenu>(`${environment.apiUrl}/admin/menus`,value);}
+ updateMenu(id:number,value:object){return this.http.put<AdminMenu>(`${environment.apiUrl}/admin/menus/${id}`,value);}
+ enableMenu(id:number,value:boolean){return this.http.patch<AdminMenu>(`${environment.apiUrl}/admin/menus/${id}/enabled`,null,{params:{value}});}
 }

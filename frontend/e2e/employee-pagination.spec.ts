@@ -94,3 +94,21 @@ test('admin manages employees and opens administration screens', async ({ page }
   await expect(page.getByRole('heading',{name:'Statistiques'})).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('admin creates, edits and disables a menu', async ({ page }) => {
+  const email=process.env['E2E_ADMIN_EMAIL'];const password=process.env['E2E_ADMIN_PASSWORD'];const title=process.env['E2E_ADMIN_MENU_TITLE'];
+  if(!email||!password||!title)throw new Error('Temporary admin menu smoke values are required.');
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/connexion?returnUrl=%2Fadmin%2Fmenus');
+  await page.getByLabel('Adresse e-mail').fill(email);await page.getByLabel('Mot de passe').fill(password);await page.getByRole('button',{name:'Se connecter'}).click();
+  await expect(page).toHaveURL(/\/admin\/menus$/);await page.getByRole('link',{name:'Nouveau menu'}).click();
+  await page.locator('input[name="title"]').fill(title);await page.locator('input[name="price"]').fill('19.50');await page.locator('input[name="minimum"]').fill('4');
+  await page.locator('input[name="stock"]').fill('40');await page.locator('input[name="theme"]').fill('Smoke');await page.locator('input[name="diet"]').fill('Classique');
+  await page.locator('textarea[name="description"]').fill('Menu créé par le smoke Chromium');await page.locator('textarea[name="conditions"]').fill('Conditions de test');
+  await page.getByRole('button',{name:'Enregistrer'}).click();await expect(page.getByRole('heading',{name:title})).toBeVisible();
+  await page.getByRole('link',{name:'Modifier'}).click();const updated=`${title} Updated`;await page.locator('input[name="title"]').fill(updated);await page.locator('input[name="price"]').fill('21.00');
+  await page.getByRole('button',{name:'Enregistrer'}).click();await expect(page.getByRole('heading',{name:updated})).toBeVisible();
+  page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Désactiver'}).click();await expect(page.getByText('Inactif')).toBeVisible();
+  const publicResponse=await page.request.get(`http://127.0.0.1:8080/api/v1/public/menus?query=${encodeURIComponent(updated)}`);
+  expect(publicResponse.status()).toBe(200);expect((await publicResponse.json()).content).toHaveLength(0);expect(errors).toEqual([]);
+});

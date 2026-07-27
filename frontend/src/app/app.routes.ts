@@ -25,6 +25,10 @@ export const routes: Routes = [
   { path: 'admin/employes', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin').then(m => m.AdminEmployeesComponent) },
   { path: 'admin/horaires', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin').then(m => m.AdminOpeningHoursComponent) },
   { path: 'admin/statistiques', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin').then(m => m.AdminStatisticsComponent) },
+  { path: 'admin/menus', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-menus').then(m => m.AdminMenuListComponent) },
+  { path: 'admin/menus/nouveau', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-menus').then(m => m.AdminMenuFormComponent) },
+  { path: 'admin/menus/:id', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-menus').then(m => m.AdminMenuDetailComponent) },
+  { path: 'admin/menus/:id/modifier', canActivate: [roleGuard], data: { roles: ['ADMIN'] }, loadComponent: () => import('./features/admin/admin-menus').then(m => m.AdminMenuFormComponent) },
   { path: 'interdit', loadComponent: () => import('./features/public/public-pages').then(m => m.ForbiddenComponent) },
   { path: '**', loadComponent: () => import('./features/public/public-pages').then(m => m.NotFoundComponent), title: 'Page introuvable' }
 ];

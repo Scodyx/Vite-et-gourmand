@@ -77,6 +77,15 @@ RETURNING id;
         throw "Exact $Role smoke account was not deactivated."
     }
 }
+function Disable-SmokeMenu([string]$Title) {
+    if($Title-notmatch "^Smoke Browser Menu [0-9]+( Updated)?$"){throw "Menu cleanup guard rejected a non-smoke title."}
+    $dbUser=(& docker compose exec -T postgres printenv POSTGRES_USER).Trim()
+    $dbName=(& docker compose exec -T postgres printenv POSTGRES_DB).Trim()
+    $sql="UPDATE menu SET active=false, updated_at=CURRENT_TIMESTAMP WHERE title=:'exact_title' RETURNING id;"
+    $result=$sql | & docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -v "exact_title=$Title" -U $dbUser -d $dbName -tA
+    if($LASTEXITCODE-ne 0){throw "Browser menu cleanup failed."}
+    @($result|Where-Object{$_-match "^[0-9]+$"}).Count
+}
 function Start-EmployeeBrowserSmoke {
     if(Get-NetTCPConnection -State Listen -LocalPort 4200 -ErrorAction SilentlyContinue){
         throw "Port 4200 is already used; nothing was stopped."
@@ -102,11 +111,12 @@ function Start-EmployeeBrowserSmoke {
     $env:E2E_ADMIN_PASSWORD=$AdminPassword
     $env:E2E_ADMIN_EMPLOYEE_EMAIL=$browserEmployeeEmail
     $env:E2E_ADMIN_EMPLOYEE_PASSWORD=$browserEmployeePassword
+    $env:E2E_ADMIN_MENU_TITLE=$browserMenuTitle
     try {
         & npm.cmd run e2e:smoke --prefix $frontend
         if($LASTEXITCODE-ne 0){throw "Playwright employee smoke test failed."}
     } finally {
-        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD -ErrorAction SilentlyContinue
+        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE -ErrorAction SilentlyContinue
     }
 }
 if(-not(Test-Path -LiteralPath $jar)){throw "Build the backend JAR first."}
@@ -122,6 +132,8 @@ $employeeEmail="smoke.employee.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds
 $employeePassword=New-RandomPassword
 $browserEmployeeEmail="smoke.employee.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())$((Get-Random -Minimum 100 -Maximum 999))@example.test"
 $browserEmployeePassword=New-RandomPassword
+$smokeMenuTitle="Smoke API Menu $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+$browserMenuTitle="Smoke Browser Menu $([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 $userEmail="smoke.user.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())@example.test"
 $userPassword=New-RandomPassword
 try {
@@ -137,6 +149,19 @@ try {
     Expect ANONYMOUS_ADMIN (Request GET "$base/admin/employees") 401
     $admin=Request POST "$base/auth/login" @{} @{email=$AdminEmail;password=$AdminPassword};Expect ADMIN_LOGIN $admin 200
     $ah=@{Authorization="Bearer $($admin.Content.accessToken)"}
+    Expect ANONYMOUS_ADMIN_MENUS (Request GET "$base/admin/menus") 401
+    $menuPayload=@{title=$smokeMenuTitle;description="Menu de validation automatique";conditions="Commande de test";minimumPersons=4;basePrice=15.50;availableStock=40;active=$true;theme="Smoke";diet="Classique";imageUrl=$null}
+    $adminMenu=Request POST "$base/admin/menus" $ah $menuPayload;Expect ADMIN_CREATE_MENU $adminMenu 201;$adminMenuId=$adminMenu.Content.id;$adminMenuSlug=$adminMenu.Content.slug
+    Expect ADMIN_LIST_MENUS (Request GET "$base/admin/menus" $ah) 200
+    Expect ADMIN_MENU_DETAIL (Request GET "$base/admin/menus/$adminMenuId" $ah) 200
+    $menuPayload.title="$smokeMenuTitle Updated";$menuPayload.basePrice=17.25;$menuPayload.availableStock=44
+    Expect ADMIN_UPDATE_MENU (Request PUT "$base/admin/menus/$adminMenuId" $ah $menuPayload) 200
+    $invalid=$menuPayload.Clone();$invalid.basePrice=0;Expect ADMIN_MENU_INVALID_PRICE (Request PUT "$base/admin/menus/$adminMenuId" $ah $invalid) 400
+    $invalid=$menuPayload.Clone();$invalid.availableStock=-1;Expect ADMIN_MENU_INVALID_STOCK (Request PUT "$base/admin/menus/$adminMenuId" $ah $invalid) 400
+    $invalid=$menuPayload.Clone();$invalid.minimumPersons=0;Expect ADMIN_MENU_INVALID_MINIMUM (Request PUT "$base/admin/menus/$adminMenuId" $ah $invalid) 400
+    Expect PUBLIC_ACTIVE_MENU (Request GET "$base/public/menus/$adminMenuSlug") 200
+    Expect ADMIN_DISABLE_MENU (Request PATCH "$base/admin/menus/$adminMenuId/enabled?value=false" $ah) 200
+    Expect PUBLIC_INACTIVE_MENU (Request GET "$base/public/menus/$adminMenuSlug") 404
     Expect ADMIN_EMPLOYEES (Request GET "$base/admin/employees" $ah) 200
     $created=Request POST "$base/admin/employees" $ah @{firstName="Smoke";lastName="Employee";email=$employeeEmail;temporaryPassword=$employeePassword;phone="0600000000"}
     Expect ADMIN_CREATE_EMPLOYEE $created 201;$employeeId=$created.Content.id;$employeeCreated=$true
@@ -162,10 +187,14 @@ try {
     if($FailAfterEmployeeLogin){throw "Intentional intermediate failure used to validate finally cleanup."}
     Expect EMPLOYEE_ORDERS (Request GET "$base/employee/orders?page=0&size=1" $eh) 200
     Expect EMPLOYEE_ADMIN_FORBIDDEN (Request GET "$base/admin/employees" $eh) 403
+    Expect EMPLOYEE_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $eh) 403
     $user=Request POST "$base/auth/register" @{} @{firstName="Smoke";lastName="Customer";phone="0600000001";email=$userEmail;
       addressLine="1 rue Test";postalCode="33000";city="Bordeaux";country="France";password=$userPassword;termsAccepted=$true}
     Expect USER_REGISTER $user 201;$uh=@{Authorization="Bearer $($user.Content.accessToken)"}
     Expect USER_EMPLOYEE_FORBIDDEN (Request GET "$base/employee/orders" $uh) 403
+    Expect USER_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $uh) 403
+    $inactiveOrder=@{menuId=$adminMenuId;personCount=4;prestationDate=(Get-Date).Date.AddDays(9).ToString("yyyy-MM-dd");desiredDeliveryTime="12:00";deliveryAddress="1 rue Test";deliveryPostalCode="33000";deliveryCity="Bordeaux";deliveryCountry="France";distanceKm=0;outsideBordeaux=$false;equipmentLoaned=$false}
+    Expect USER_INACTIVE_MENU_ORDER (Request POST "$base/orders" $uh $inactiveOrder) 404
     $menus=Request GET "$base/public/menus?size=1";Expect PUBLIC_MENUS $menus 200;$menu=$menus.Content.content|Select-Object -First 1
     if($null-eq $menu){throw "No active menu available."}
     $date=(Get-Date).Date.AddDays(10).ToString("yyyy-MM-dd")
@@ -195,6 +224,14 @@ try {
 } catch {
     $scenarioError=$_
 } finally {
+    try {
+        $browserMenus=(Disable-SmokeMenu "$browserMenuTitle Updated")+(Disable-SmokeMenu $browserMenuTitle)
+        if($browserMenus-gt 0){Write-Output "BROWSER_MENU_CLEANUP=DEACTIVATED"}
+    } catch {$cleanupErrors.Add("Browser menu cleanup failed: $($_.Exception.Message)")}
+    if($adminMenuId -and $ah){
+        try {Expect ADMIN_MENU_FINAL_DISABLE (Request PATCH "$base/admin/menus/$adminMenuId/enabled?value=false" $ah) 200}
+        catch {$cleanupErrors.Add("API menu cleanup failed: $($_.Exception.Message)")}
+    }
     if($hoursChanged -and $hour -and $ah){
         try {
             $restore=@{dayOfWeek=$hour.dayOfWeek;openingTime=$hour.openingTime;closingTime=$hour.closingTime;closed=$hour.closed;displayOrder=$hour.displayOrder}
@@ -229,7 +266,7 @@ try {
         catch {$cleanupErrors.Add("ADMIN reconnection check failed: $($_.Exception.Message)")}
     }
     $AdminPassword=$null;$employeePassword=$null;$browserEmployeePassword=$null;$userPassword=$null
-    Remove-Item Env:INITIAL_ADMIN_ENABLED,Env:INITIAL_ADMIN_EMAIL,Env:INITIAL_ADMIN_PASSWORD,Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Item Env:INITIAL_ADMIN_ENABLED,Env:INITIAL_ADMIN_EMAIL,Env:INITIAL_ADMIN_PASSWORD,Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE -ErrorAction SilentlyContinue
     Stop-ProcessTree $frontendProcess
     Stop-ProcessTree $backendProcess
 }

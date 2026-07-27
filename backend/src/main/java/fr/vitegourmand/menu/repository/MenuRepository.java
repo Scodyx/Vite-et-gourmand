@@ -13,6 +13,7 @@ public interface MenuRepository extends JpaRepository<Menu, Long>, JpaSpecificat
     Page<Menu> findByActiveTrue(Pageable pageable);
     Optional<Menu> findBySlugAndActiveTrue(String slug);
     Optional<Menu> findBySlug(String slug);
+    Optional<Menu> findByTitleIgnoreCase(String title);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Menu> findLockedById(Long id);
 }

@@ -34,4 +34,15 @@ describe('ManagementService admin API', () => {
     service.revenue().subscribe();http.expectOne(`${environment.apiUrl}/admin/statistics/revenue`).flush({});
     service.rebuildStatistics().subscribe();expect(http.expectOne(`${environment.apiUrl}/admin/statistics/rebuild`).request.method).toBe('POST');
   });
+  it('uses ADMIN menu CRUD endpoints',()=>{
+    service.menus().subscribe();http.expectOne(`${environment.apiUrl}/admin/menus`).flush([]);
+    service.menu(9).subscribe();http.expectOne(`${environment.apiUrl}/admin/menus/9`).flush({});
+    service.createMenu({title:'Smoke'}).subscribe();expect(http.expectOne(`${environment.apiUrl}/admin/menus`).request.method).toBe('POST');
+    service.updateMenu(9,{title:'Updated'}).subscribe();expect(http.expectOne(`${environment.apiUrl}/admin/menus/9`).request.method).toBe('PUT');
+  });
+  it('activates and deactivates menus explicitly',()=>{
+    service.enableMenu(5,false).subscribe();
+    const request=http.expectOne(r=>r.url.endsWith('/admin/menus/5/enabled')&&r.params.get('value')==='false');
+    expect(request.request.method).toBe('PATCH');
+  });
 });

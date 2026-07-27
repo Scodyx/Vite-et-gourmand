@@ -1,36 +1,150 @@
 package fr.vitegourmand.menu.controller;
-import fr.vitegourmand.common.exception.*;
+
+import fr.vitegourmand.common.exception.BusinessException;
+import fr.vitegourmand.common.exception.NotFoundException;
 import fr.vitegourmand.menu.entity.Menu;
+import fr.vitegourmand.menu.entity.MenuImage;
 import fr.vitegourmand.menu.repository.MenuRepository;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
-import org.springframework.http.*;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import org.hibernate.validator.constraints.URL;
+import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
 import java.math.BigDecimal;
-import java.util.*;
-@RestController @RequestMapping("/api/v1/employee/menus")
+import java.text.Normalizer;
+import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
+
+@RestController
+@RequestMapping("/api/v1/admin/menus")
 public class EmployeeMenuController {
- private final MenuRepository menus;public EmployeeMenuController(MenuRepository m){menus=m;}
- public record Input(@NotBlank String title,@NotBlank @Pattern(regexp="[a-z0-9-]+") String slug,
-  @NotBlank String description,@NotBlank String conditions,@Min(1) int minimumPersons,
-  @NotNull @DecimalMin("0") BigDecimal basePrice,@Min(0) int availableStock,boolean active,
-  @NotBlank String theme,@NotBlank String diet){}
- public record View(Long id,String title,String slug,String description,String conditions,int minimumPersons,
-  BigDecimal basePrice,int availableStock,boolean active,String theme,String diet){}
- @GetMapping List<View> all(){return menus.findAll().stream().map(this::view).toList();}
- @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional View create(@Valid @RequestBody Input r){
-  if(menus.findBySlug(r.slug()).isPresent())throw new BusinessException("Ce slug existe déjà");
-  var m=new Menu();apply(m,r);return view(menus.save(m));}
- @PutMapping("/{id}") @Transactional View update(@PathVariable Long id,@Valid @RequestBody Input r){
-  var m=menus.findById(id).orElseThrow(()->new NotFoundException("Menu introuvable"));
-  menus.findBySlug(r.slug()).filter(other->!other.getId().equals(id)).ifPresent(other->{throw new BusinessException("Ce slug existe déjà");});
-  apply(m,r);return view(m);}
- @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @Transactional void disable(@PathVariable Long id){
-  var m=menus.findById(id).orElseThrow(()->new NotFoundException("Menu introuvable"));m.setActive(false);m.touch();}
- private void apply(Menu m,Input r){m.setTitle(r.title().trim());m.setSlug(r.slug());m.setDescription(r.description().trim());
-  m.setConditions(r.conditions().trim());m.setMinimumPersons(r.minimumPersons());m.setBasePrice(r.basePrice());
-  m.setAvailableStock(r.availableStock());m.setActive(r.active());m.setTheme(r.theme().trim());m.setDiet(r.diet().trim());m.touch();}
- private View view(Menu m){return new View(m.getId(),m.getTitle(),m.getSlug(),m.getDescription(),m.getConditions(),m.getMinimumPersons(),
-  m.getBasePrice(),m.getAvailableStock(),m.isActive(),m.getTheme(),m.getDiet());}
+    private final MenuRepository menus;
+
+    public EmployeeMenuController(MenuRepository menus) {
+        this.menus = menus;
+    }
+
+    public record Input(
+            @NotBlank String title,
+            @NotBlank String description,
+            @NotBlank String conditions,
+            @Min(1) int minimumPersons,
+            @NotNull @DecimalMin(value = "0", inclusive = false) BigDecimal basePrice,
+            @Min(0) int availableStock,
+            boolean active,
+            @NotBlank String theme,
+            @NotBlank String diet,
+            @URL String imageUrl
+    ) {}
+
+    public record View(
+            Long id, String title, String slug, String description, String conditions,
+            int minimumPersons, BigDecimal basePrice, int availableStock, boolean active,
+            String theme, String diet, String imageUrl, Instant updatedAt
+    ) {}
+
+    @GetMapping
+    @Transactional(readOnly = true)
+    List<View> all() {
+        return menus.findAll().stream().map(this::view).toList();
+    }
+
+    @GetMapping("/{id}")
+    @Transactional(readOnly = true)
+    View one(@PathVariable Long id) {
+        return view(menu(id));
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    View create(@Valid @RequestBody Input request) {
+        ensureUniqueTitle(request.title(), null);
+        var menu = new Menu();
+        menu.setSlug(uniqueSlug(request.title()));
+        apply(menu, request);
+        return view(menus.save(menu));
+    }
+
+    @PutMapping("/{id}")
+    @Transactional
+    View update(@PathVariable Long id, @Valid @RequestBody Input request) {
+        var menu = menu(id);
+        ensureUniqueTitle(request.title(), id);
+        apply(menu, request);
+        return view(menu);
+    }
+
+    @PatchMapping("/{id}/enabled")
+    @Transactional
+    View enabled(@PathVariable Long id, @RequestParam boolean value) {
+        var menu = menu(id);
+        menu.setActive(value);
+        menu.touch();
+        return view(menu);
+    }
+
+    private Menu menu(Long id) {
+        return menus.findById(id).orElseThrow(() -> new NotFoundException("Menu introuvable"));
+    }
+
+    private void apply(Menu menu, Input request) {
+        menu.setTitle(request.title().trim());
+        menu.setDescription(request.description().trim());
+        menu.setConditions(request.conditions().trim());
+        menu.setMinimumPersons(request.minimumPersons());
+        menu.setBasePrice(request.basePrice());
+        menu.setAvailableStock(request.availableStock());
+        menu.setActive(request.active());
+        menu.setTheme(request.theme().trim());
+        menu.setDiet(request.diet().trim());
+        applyImage(menu, request.imageUrl());
+        menu.touch();
+    }
+
+    private void applyImage(Menu menu, String value) {
+        String url = value == null || value.isBlank() ? null : value.trim();
+        if (url == null) {
+            menu.getImages().clear();
+            return;
+        }
+        MenuImage image = menu.getImages().stream().findFirst().orElseGet(() -> {
+            var created = new MenuImage();
+            created.setMenu(menu);
+            created.setDisplayOrder(1);
+            menu.getImages().add(created);
+            return created;
+        });
+        image.setImageUrl(url);
+        image.setAltText("Présentation de " + menu.getTitle());
+    }
+
+    private void ensureUniqueTitle(String title, Long id) {
+        menus.findByTitleIgnoreCase(title.trim())
+                .filter(other -> !other.getId().equals(id))
+                .ifPresent(other -> { throw new BusinessException("Ce nom de menu existe déjà"); });
+    }
+
+    private String uniqueSlug(String title) {
+        String base = Normalizer.normalize(title.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        String candidate = base;
+        int suffix = 2;
+        while (menus.findBySlug(candidate).isPresent()) candidate = base + "-" + suffix++;
+        return candidate;
+    }
+
+    private View view(Menu menu) {
+        String image = menu.getImages().stream().findFirst().map(MenuImage::getImageUrl).orElse(null);
+        return new View(menu.getId(), menu.getTitle(), menu.getSlug(), menu.getDescription(),
+                menu.getConditions(), menu.getMinimumPersons(), menu.getBasePrice(),
+                menu.getAvailableStock(), menu.isActive(), menu.getTheme(), menu.getDiet(),
+                image, menu.getUpdatedAt());
+    }
 }

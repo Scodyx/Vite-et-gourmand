@@ -37,6 +37,7 @@ public class Menu {
     public boolean isActive() { return active; }
     public String getTheme() { return theme; }
     public String getDiet() { return diet; }
+    public Instant getUpdatedAt() { return updatedAt; }
     public Set<Dish> getDishes(){return dishes;} public List<MenuImage> getImages(){return images;}
     public void setTitle(String title) { this.title = title; }
     public void setSlug(String slug) { this.slug = slug; }
