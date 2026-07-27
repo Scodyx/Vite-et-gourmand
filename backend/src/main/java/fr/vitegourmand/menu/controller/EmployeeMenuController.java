@@ -5,6 +5,9 @@ import fr.vitegourmand.common.exception.NotFoundException;
 import fr.vitegourmand.menu.entity.Menu;
 import fr.vitegourmand.menu.entity.MenuImage;
 import fr.vitegourmand.menu.repository.MenuRepository;
+import fr.vitegourmand.dish.entity.Dish;
+import fr.vitegourmand.dish.entity.DishType;
+import fr.vitegourmand.dish.repository.DishRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -20,14 +23,18 @@ import java.text.Normalizer;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Comparator;
+import java.util.HashSet;
 
 @RestController
 @RequestMapping("/api/v1/admin/menus")
 public class EmployeeMenuController {
     private final MenuRepository menus;
+    private final DishRepository dishes;
 
-    public EmployeeMenuController(MenuRepository menus) {
+    public EmployeeMenuController(MenuRepository menus, DishRepository dishes) {
         this.menus = menus;
+        this.dishes = dishes;
     }
 
     public record Input(
@@ -48,6 +55,9 @@ public class EmployeeMenuController {
             int minimumPersons, BigDecimal basePrice, int availableStock, boolean active,
             String theme, String diet, String imageUrl, Instant updatedAt
     ) {}
+    public record DishItem(Long id, String name, DishType type, boolean active) {}
+    public record DishesView(Long menuId, String title, boolean active, List<DishItem> dishes, int dishCount) {}
+    public record DishIds(@NotNull List<@NotNull Long> dishIds) {}
 
     @GetMapping
     @Transactional(readOnly = true)
@@ -90,8 +100,62 @@ public class EmployeeMenuController {
         return view(menu);
     }
 
+    @GetMapping("/{id}/dishes")
+    @Transactional(readOnly = true)
+    DishesView dishes(@PathVariable Long id) {
+        return dishesView(menu(id));
+    }
+
+    @PostMapping("/{id}/dishes/{dishId}")
+    @Transactional
+    DishesView addDish(@PathVariable Long id, @PathVariable Long dishId) {
+        var menu = menu(id);
+        var dish = dish(dishId);
+        if (!dish.isActive()) throw new BusinessException("Un plat inactif ne peut pas être ajouté");
+        if (!menu.getDishes().add(dish)) throw new BusinessException("Ce plat est déjà associé au menu");
+        menu.touch();
+        return dishesView(menu);
+    }
+
+    @PutMapping("/{id}/dishes")
+    @Transactional
+    DishesView replaceDishes(@PathVariable Long id, @Valid @RequestBody DishIds request) {
+        var menu = menu(id);
+        if (new HashSet<>(request.dishIds()).size() != request.dishIds().size())
+            throw new BusinessException("La liste contient un plat en doublon");
+        var replacements = request.dishIds().stream().map(this::dish).toList();
+        if (replacements.stream().anyMatch(value -> !value.isActive()))
+            throw new BusinessException("Un plat inactif ne peut pas être ajouté");
+        menu.getDishes().clear();
+        menu.getDishes().addAll(replacements);
+        menu.touch();
+        return dishesView(menu);
+    }
+
+    @DeleteMapping("/{id}/dishes/{dishId}")
+    @Transactional
+    DishesView removeDish(@PathVariable Long id, @PathVariable Long dishId) {
+        var menu = menu(id);
+        var dish = dish(dishId);
+        if (!menu.getDishes().remove(dish)) throw new BusinessException("Ce plat n'est pas associé au menu");
+        menu.touch();
+        return dishesView(menu);
+    }
+
     private Menu menu(Long id) {
         return menus.findById(id).orElseThrow(() -> new NotFoundException("Menu introuvable"));
+    }
+
+    private Dish dish(Long id) {
+        return dishes.findById(id).orElseThrow(() -> new NotFoundException("Plat introuvable"));
+    }
+
+    private DishesView dishesView(Menu menu) {
+        var values = menu.getDishes().stream()
+                .sorted(Comparator.comparing(Dish::getType).thenComparing(Dish::getName))
+                .map(value -> new DishItem(value.getId(), value.getName(), value.getType(), value.isActive()))
+                .toList();
+        return new DishesView(menu.getId(), menu.getTitle(), menu.isActive(), values, values.size());
     }
 
     private void apply(Menu menu, Input request) {

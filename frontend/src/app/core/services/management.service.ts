@@ -8,6 +8,8 @@ export interface MenuStat{menuId:number;menuTitle:string;date:string;orderCount:
 export interface RevenueSummary{orderCount:number;grossRevenue:number;discountTotal:number;deliveryRevenue:number;totalRevenue:number}
 export interface OpeningHours{id:number;dayOfWeek:string;openingTime:string|null;closingTime:string|null;closed:boolean;displayOrder:number}
 export interface AdminMenu{id:number;title:string;slug:string;description:string;conditions:string;minimumPersons:number;basePrice:number;availableStock:number;active:boolean;theme:string;diet:string;imageUrl:string|null;updatedAt:string}
+export interface MenuDishItem{id:number;name:string;type:Dish['type'];active:boolean}
+export interface MenuDishes{menuId:number;title:string;active:boolean;dishes:MenuDishItem[];dishCount:number}
 @Injectable({providedIn:'root'})
 export class ManagementService{
  constructor(private http:HttpClient){}
@@ -33,4 +35,8 @@ export class ManagementService{
  createMenu(value:object){return this.http.post<AdminMenu>(`${environment.apiUrl}/admin/menus`,value);}
  updateMenu(id:number,value:object){return this.http.put<AdminMenu>(`${environment.apiUrl}/admin/menus/${id}`,value);}
  enableMenu(id:number,value:boolean){return this.http.patch<AdminMenu>(`${environment.apiUrl}/admin/menus/${id}/enabled`,null,{params:{value}});}
+ menuDishes(id:number){return this.http.get<MenuDishes>(`${environment.apiUrl}/admin/menus/${id}/dishes`);}
+ addMenuDish(menuId:number,dishId:number){return this.http.post<MenuDishes>(`${environment.apiUrl}/admin/menus/${menuId}/dishes/${dishId}`,{});}
+ removeMenuDish(menuId:number,dishId:number){return this.http.delete<MenuDishes>(`${environment.apiUrl}/admin/menus/${menuId}/dishes/${dishId}`);}
+ setMenuDishes(menuId:number,dishIds:number[]){return this.http.put<MenuDishes>(`${environment.apiUrl}/admin/menus/${menuId}/dishes`,{dishIds});}
 }

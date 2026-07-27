@@ -123,11 +123,17 @@ function Start-EmployeeBrowserSmoke {
     $env:E2E_ADMIN_EMPLOYEE_PASSWORD=$browserEmployeePassword
     $env:E2E_ADMIN_MENU_TITLE=$browserMenuTitle
     $env:E2E_ADMIN_DISH_NAME=$browserDishName
+    $env:E2E_ASSOC_MENU_ID="$adminMenuId"
+    $env:E2E_ASSOC_MENU_SLUG=$adminMenuSlug
+    $env:E2E_ASSOC_DISH_ONE_ID="$adminDishId"
+    $env:E2E_ASSOC_DISH_ONE_NAME="$($dishPayload.name)"
+    $env:E2E_ASSOC_DISH_TWO_ID="$adminDishTwoId"
+    $env:E2E_ASSOC_DISH_TWO_NAME="$($dishTwoPayload.name)"
     try {
         & npm.cmd run e2e:smoke --prefix $frontend
         if($LASTEXITCODE-ne 0){throw "Playwright employee smoke test failed."}
     } finally {
-        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE,Env:E2E_ADMIN_DISH_NAME -ErrorAction SilentlyContinue
+        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_EMAIL,Env:E2E_ADMIN_PASSWORD,Env:E2E_ADMIN_EMPLOYEE_EMAIL,Env:E2E_ADMIN_EMPLOYEE_PASSWORD,Env:E2E_ADMIN_MENU_TITLE,Env:E2E_ADMIN_DISH_NAME,Env:E2E_ASSOC_MENU_ID,Env:E2E_ASSOC_MENU_SLUG,Env:E2E_ASSOC_DISH_ONE_ID,Env:E2E_ASSOC_DISH_ONE_NAME,Env:E2E_ASSOC_DISH_TWO_ID,Env:E2E_ASSOC_DISH_TWO_NAME -ErrorAction SilentlyContinue
     }
 }
 if(-not(Test-Path -LiteralPath $jar)){throw "Build the backend JAR first."}
@@ -173,6 +179,8 @@ try {
     Expect ADMIN_DISH_DUPLICATE (Request POST "$base/admin/dishes" $ah $dishPayload) 409
     Expect ADMIN_DISABLE_DISH (Request PATCH "$base/admin/dishes/$adminDishId/enabled?value=false" $ah) 200
     Expect ADMIN_REACTIVATE_DISH (Request PATCH "$base/admin/dishes/$adminDishId/enabled?value=true" $ah) 200
+    $dishTwoPayload=@{name="$smokeDishName Second";description="Second plat de validation";type="DESSERT";active=$true}
+    $adminDishTwo=Request POST "$base/admin/dishes" $ah $dishTwoPayload;Expect ADMIN_CREATE_SECOND_DISH $adminDishTwo 201;$adminDishTwoId=$adminDishTwo.Content.id
     Expect ANONYMOUS_ADMIN_MENUS (Request GET "$base/admin/menus") 401
     $menuPayload=@{title=$smokeMenuTitle;description="Menu de validation automatique";conditions="Commande de test";minimumPersons=4;basePrice=15.50;availableStock=40;active=$true;theme="Smoke";diet="Classique";imageUrl=$null}
     $adminMenu=Request POST "$base/admin/menus" $ah $menuPayload;Expect ADMIN_CREATE_MENU $adminMenu 201;$adminMenuId=$adminMenu.Content.id;$adminMenuSlug=$adminMenu.Content.slug
@@ -180,6 +188,19 @@ try {
     Expect ADMIN_MENU_DETAIL (Request GET "$base/admin/menus/$adminMenuId" $ah) 200
     $menuPayload.title="$smokeMenuTitle Updated";$menuPayload.basePrice=17.25;$menuPayload.availableStock=44
     Expect ADMIN_UPDATE_MENU (Request PUT "$base/admin/menus/$adminMenuId" $ah $menuPayload) 200
+    Expect ANONYMOUS_MENU_DISHES (Request GET "$base/admin/menus/$adminMenuId/dishes") 401
+    Expect ADMIN_UNKNOWN_MENU_DISHES (Request GET "$base/admin/menus/999999999/dishes" $ah) 404
+    Expect ADMIN_UNKNOWN_DISH_ASSOCIATION (Request POST "$base/admin/menus/$adminMenuId/dishes/999999999" $ah @{}) 404
+    Expect ADMIN_MENU_DISHES_EMPTY (Request GET "$base/admin/menus/$adminMenuId/dishes" $ah) 200
+    Expect ADMIN_ADD_MENU_DISH (Request POST "$base/admin/menus/$adminMenuId/dishes/$adminDishId" $ah @{}) 200
+    Expect ADMIN_DUPLICATE_MENU_DISH (Request POST "$base/admin/menus/$adminMenuId/dishes/$adminDishId" $ah @{}) 409
+    Expect ADMIN_DISABLE_SECOND_DISH (Request PATCH "$base/admin/dishes/$adminDishTwoId/enabled?value=false" $ah) 200
+    Expect ADMIN_REJECT_INACTIVE_MENU_DISH (Request POST "$base/admin/menus/$adminMenuId/dishes/$adminDishTwoId" $ah @{}) 409
+    Expect ADMIN_REACTIVATE_SECOND_DISH (Request PATCH "$base/admin/dishes/$adminDishTwoId/enabled?value=true" $ah) 200
+    Expect ADMIN_ADD_SECOND_MENU_DISH (Request POST "$base/admin/menus/$adminMenuId/dishes/$adminDishTwoId" $ah @{}) 200
+    Expect ADMIN_REMOVE_MENU_DISH (Request DELETE "$base/admin/menus/$adminMenuId/dishes/$adminDishId" $ah) 200
+    Expect ADMIN_REMOVE_ABSENT_MENU_DISH (Request DELETE "$base/admin/menus/$adminMenuId/dishes/$adminDishId" $ah) 409
+    Expect ADMIN_REMOVE_SECOND_MENU_DISH (Request DELETE "$base/admin/menus/$adminMenuId/dishes/$adminDishTwoId" $ah) 200
     $invalid=$menuPayload.Clone();$invalid.basePrice=0;Expect ADMIN_MENU_INVALID_PRICE (Request PUT "$base/admin/menus/$adminMenuId" $ah $invalid) 400
     $invalid=$menuPayload.Clone();$invalid.availableStock=-1;Expect ADMIN_MENU_INVALID_STOCK (Request PUT "$base/admin/menus/$adminMenuId" $ah $invalid) 400
     $invalid=$menuPayload.Clone();$invalid.minimumPersons=0;Expect ADMIN_MENU_INVALID_MINIMUM (Request PUT "$base/admin/menus/$adminMenuId" $ah $invalid) 400
@@ -213,12 +234,14 @@ try {
     Expect EMPLOYEE_ADMIN_FORBIDDEN (Request GET "$base/admin/employees" $eh) 403
     Expect EMPLOYEE_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $eh) 403
     Expect EMPLOYEE_ADMIN_DISHES_FORBIDDEN (Request GET "$base/admin/dishes" $eh) 403
+    Expect EMPLOYEE_MENU_DISHES_FORBIDDEN (Request GET "$base/admin/menus/$adminMenuId/dishes" $eh) 403
     $user=Request POST "$base/auth/register" @{} @{firstName="Smoke";lastName="Customer";phone="0600000001";email=$userEmail;
       addressLine="1 rue Test";postalCode="33000";city="Bordeaux";country="France";password=$userPassword;termsAccepted=$true}
     Expect USER_REGISTER $user 201;$userCreated=$true;$uh=@{Authorization="Bearer $($user.Content.accessToken)"}
     Expect USER_EMPLOYEE_FORBIDDEN (Request GET "$base/employee/orders" $uh) 403
     Expect USER_ADMIN_MENUS_FORBIDDEN (Request GET "$base/admin/menus" $uh) 403
     Expect USER_ADMIN_DISHES_FORBIDDEN (Request GET "$base/admin/dishes" $uh) 403
+    Expect USER_MENU_DISHES_FORBIDDEN (Request GET "$base/admin/menus/$adminMenuId/dishes" $uh) 403
     $inactiveOrder=@{menuId=$adminMenuId;personCount=4;prestationDate=(Get-Date).Date.AddDays(9).ToString("yyyy-MM-dd");desiredDeliveryTime="12:00";deliveryAddress="1 rue Test";deliveryPostalCode="33000";deliveryCity="Bordeaux";deliveryCountry="France";distanceKm=0;outsideBordeaux=$false;equipmentLoaned=$false}
     Expect USER_INACTIVE_MENU_ORDER (Request POST "$base/orders" $uh $inactiveOrder) 404
     $menus=Request GET "$base/public/menus?size=1";Expect PUBLIC_MENUS $menus 200;$menu=$menus.Content.content|Select-Object -First 1
@@ -237,7 +260,9 @@ try {
     Expect EMPLOYEE_INVALID_DATES (Request GET "$base/employee/orders?dateFrom=2030-02-01&dateTo=2030-01-01" $eh) 400
     Expect EMPLOYEE_MALFORMED_DATE (Request GET "$base/employee/orders?dateFrom=not-a-date" $eh) 400
     Expect EMPLOYEE_DETAIL (Request GET "$base/employee/orders/$orderId" $eh) 200
+    Expect ADMIN_REACTIVATE_MENU_FOR_BROWSER (Request PATCH "$base/admin/menus/$adminMenuId/enabled?value=true" $ah) 200
     Start-EmployeeBrowserSmoke
+    Expect ADMIN_DISABLE_MENU_AFTER_BROWSER (Request PATCH "$base/admin/menus/$adminMenuId/enabled?value=false" $ah) 200
     foreach($status in "ACCEPTED","IN_PREPARATION","OUT_FOR_DELIVERY","DELIVERED","COMPLETED"){
       Expect "EMPLOYEE_TRANSITION_$status" (Request PATCH "$base/employee/orders/$orderId/status" $eh @{status=$status;comment="Automated smoke transition"}) 200}
     $detail=Request GET "$base/employee/orders/$orderId" $eh;Expect EMPLOYEE_HISTORY $detail 200
@@ -257,6 +282,10 @@ try {
     if($adminDishId -and $ah){
         try {Expect ADMIN_DISH_FINAL_DISABLE (Request PATCH "$base/admin/dishes/$adminDishId/enabled?value=false" $ah) 200}
         catch {$cleanupErrors.Add("API dish cleanup failed: $($_.Exception.Message)")}
+    }
+    if($adminDishTwoId -and $ah){
+        try {Expect ADMIN_SECOND_DISH_FINAL_DISABLE (Request PATCH "$base/admin/dishes/$adminDishTwoId/enabled?value=false" $ah) 200}
+        catch {$cleanupErrors.Add("Second API dish cleanup failed: $($_.Exception.Message)")}
     }
     try {
         $browserMenus=(Disable-SmokeMenu "$browserMenuTitle Updated")+(Disable-SmokeMenu $browserMenuTitle)

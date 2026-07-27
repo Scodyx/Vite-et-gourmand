@@ -58,4 +58,14 @@ describe('ManagementService admin API', () => {
     const request=http.expectOne(r=>r.url.endsWith('/admin/dishes/4/enabled')&&r.params.get('value')==='false');
     expect(request.request.method).toBe('PATCH');
   });
+  it('uses explicit menu dish association endpoints',()=>{
+    service.menuDishes(2).subscribe();http.expectOne(`${environment.apiUrl}/admin/menus/2/dishes`).flush({dishes:[]});
+    service.addMenuDish(2,8).subscribe();
+    expect(http.expectOne(`${environment.apiUrl}/admin/menus/2/dishes/8`).request.method).toBe('POST');
+    service.removeMenuDish(2,8).subscribe();
+    expect(http.expectOne(`${environment.apiUrl}/admin/menus/2/dishes/8`).request.method).toBe('DELETE');
+    service.setMenuDishes(2,[8,9]).subscribe();
+    const replace=http.expectOne(`${environment.apiUrl}/admin/menus/2/dishes`);
+    expect(replace.request.method).toBe('PUT');expect(replace.request.body).toEqual({dishIds:[8,9]});
+  });
 });
