@@ -17,9 +17,9 @@ public class AdminEmployeeController {
  @Autowired(required=false) private ApplicationEmailService emails;
  public AdminEmployeeController(UserRepository u,PasswordEncoder p){users=u;passwords=p;}
  public record Create(@NotBlank String firstName,@NotBlank String lastName,@NotBlank @Email String email,
-  @NotBlank @Size(min=12) String temporaryPassword,String phone){}
- public record View(Long id,String firstName,String lastName,String email,String phone,boolean enabled){
-  static View from(User u){return new View(u.getId(),u.getFirstName(),u.getLastName(),u.getEmail(),u.getPhone(),u.isEnabled());}}
+  @NotBlank @Size(min=12) @Pattern(regexp="^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$") String temporaryPassword,String phone){}
+ public record View(Long id,String firstName,String lastName,String email,String phone,Role role,boolean enabled,java.time.Instant createdAt){
+  static View from(User u){return new View(u.getId(),u.getFirstName(),u.getLastName(),u.getEmail(),u.getPhone(),u.getRole(),u.isEnabled(),u.getCreatedAt());}}
  @GetMapping List<View> all(){return users.findAll().stream().filter(u->u.getRole()==Role.EMPLOYEE).map(View::from).toList();}
  @PostMapping @ResponseStatus(HttpStatus.CREATED) @Transactional View create(@Valid @RequestBody Create r){
   if(users.existsByEmailIgnoreCase(r.email()))throw new BusinessException("Cette adresse e-mail est déjà utilisée");

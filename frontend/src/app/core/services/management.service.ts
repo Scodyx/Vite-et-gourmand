@@ -3,8 +3,10 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 export interface Allergen{id:number;name:string}
 export interface Dish{id:number;name:string;description:string;type:string;active:boolean;allergens:Allergen[]}
-export interface Employee{id:number;firstName:string;lastName:string;email:string;phone:string;enabled:boolean}
+export interface Employee{id:number;firstName:string;lastName:string;email:string;phone:string;role:'EMPLOYEE';enabled:boolean;createdAt:string}
 export interface MenuStat{menuId:number;menuTitle:string;date:string;orderCount:number;grossRevenue:number;discountTotal:number;deliveryRevenue:number;totalRevenue:number}
+export interface RevenueSummary{orderCount:number;grossRevenue:number;discountTotal:number;deliveryRevenue:number;totalRevenue:number}
+export interface OpeningHours{id:number;dayOfWeek:string;openingTime:string|null;closingTime:string|null;closed:boolean;displayOrder:number}
 @Injectable({providedIn:'root'})
 export class ManagementService{
  constructor(private http:HttpClient){}
@@ -16,5 +18,8 @@ export class ManagementService{
  createEmployee(value:object){return this.http.post<Employee>(`${environment.apiUrl}/admin/employees`,value);}
  enableEmployee(id:number,value:boolean){return this.http.patch<Employee>(`${environment.apiUrl}/admin/employees/${id}/enabled`,null,{params:{value}});}
  statistics(){return this.http.get<MenuStat[]>(`${environment.apiUrl}/admin/statistics/menus`);}
+ revenue(){return this.http.get<RevenueSummary>(`${environment.apiUrl}/admin/statistics/revenue`);}
  rebuildStatistics(){return this.http.post<MenuStat[]>(`${environment.apiUrl}/admin/statistics/rebuild`,{});}
+ openingHours(){return this.http.get<OpeningHours[]>(`${environment.apiUrl}/admin/opening-hours`);}
+ updateOpeningHours(value:OpeningHours){return this.http.put<OpeningHours>(`${environment.apiUrl}/admin/opening-hours/${value.id}`,value);}
 }

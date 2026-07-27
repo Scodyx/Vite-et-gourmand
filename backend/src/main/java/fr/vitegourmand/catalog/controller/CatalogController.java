@@ -10,7 +10,8 @@ public class CatalogController {
  private final CatalogManagementService service;public CatalogController(CatalogManagementService s){service=s;}
  @GetMapping("/api/v1/public/opening-hours") List<HoursView> publicHours(){return service.hours();}
  @GetMapping("/api/v1/employee/opening-hours") List<HoursView> hours(){return service.hours();}
- @PutMapping("/api/v1/employee/opening-hours/{id}") HoursView hours(@PathVariable Long id,@Valid @RequestBody HoursInput r){return service.updateHours(id,r);}
+ @GetMapping("/api/v1/admin/opening-hours") List<HoursView> adminHours(){return service.hours();}
+ @PutMapping("/api/v1/admin/opening-hours/{id}") HoursView hours(@PathVariable Long id,@Valid @RequestBody HoursInput r){return service.updateHours(id,r);}
  @GetMapping("/api/v1/employee/allergens") List<AllergenView> allergens(){return service.allergens();}
  @PostMapping("/api/v1/employee/allergens") @ResponseStatus(HttpStatus.CREATED) AllergenView allergen(@Valid @RequestBody AllergenInput r){return service.createAllergen(r);}
  @PutMapping("/api/v1/employee/allergens/{id}") AllergenView allergen(@PathVariable Long id,@Valid @RequestBody AllergenInput r){return service.updateAllergen(id,r);}

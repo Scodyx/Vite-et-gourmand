@@ -61,3 +61,36 @@ test('employee uses the real paginated orders workflow', async ({ page }) => {
   }
   expect(pageErrors).toEqual([]);
 });
+
+test('admin manages employees and opens administration screens', async ({ page }) => {
+  const email=process.env['E2E_ADMIN_EMAIL'];
+  const password=process.env['E2E_ADMIN_PASSWORD'];
+  const employeeEmail=process.env['E2E_ADMIN_EMPLOYEE_EMAIL'];
+  const employeePassword=process.env['E2E_ADMIN_EMPLOYEE_PASSWORD'];
+  if(!email||!password||!employeeEmail||!employeePassword)throw new Error('Temporary admin smoke credentials are required.');
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/connexion?returnUrl=%2Fadmin');
+  await page.getByLabel('Adresse e-mail').fill(email);
+  await page.getByLabel('Mot de passe').fill(password);
+  await page.getByRole('button',{name:'Se connecter'}).click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(page.getByRole('heading',{name:'Tableau de bord'})).toBeVisible();
+  await page.goto('/admin/employes');
+  await page.locator('input[name="firstName"]').fill('Browser');
+  await page.locator('input[name="lastName"]').fill('Employee');
+  await page.locator('input[name="email"]').fill(employeeEmail);
+  await page.locator('input[name="password"]').fill(employeePassword);
+  await page.locator('input[name="confirmation"]').fill(employeePassword);
+  await page.getByRole('button',{name:'Créer l’employé'}).click();
+  await expect(page.getByText(employeeEmail)).toBeVisible();
+  const card=page.locator('article.card').filter({hasText:employeeEmail});
+  page.once('dialog',dialog=>dialog.accept());
+  await card.getByRole('button',{name:'Désactiver'}).click();
+  await expect(card.getByText('Désactivé')).toBeVisible();
+  await page.goto('/admin/horaires');
+  await expect(page.getByRole('heading',{name:/Horaires/})).toBeVisible();
+  await expect(page.locator('fieldset')).toHaveCount(7);
+  await page.goto('/admin/statistiques');
+  await expect(page.getByRole('heading',{name:'Statistiques'})).toBeVisible();
+  expect(errors).toEqual([]);
+});
