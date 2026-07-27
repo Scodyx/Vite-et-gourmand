@@ -46,6 +46,17 @@ class ReviewServiceTest {
   assertThat(new ReviewService(reviews,mock(CustomerOrderRepository.class),mock(UserRepository.class)).publicApproved()).isEmpty();
   verify(reviews).findByModerationStatusOrderByCreatedAtDesc(ModerationStatus.APPROVED);
  }
+ @Test void enabledStaffCanApproveAPendingReview(){
+  var reviews=mock(ReviewRepository.class);var users=mock(UserRepository.class);var reviewer=new User();
+  reviewer.setEmail("employee@example.test");reviewer.setEnabled(true);
+  var review=new Review();ReflectionTestUtils.setField(review,"id",8L);
+  var order=completedOrder();review.setOrder(order);review.setCustomer(order.getCustomer());review.setRating(5);review.setComment("Excellent service");
+  when(reviews.findById(8L)).thenReturn(Optional.of(review));
+  when(users.findByEmailIgnoreCase("employee@example.test")).thenReturn(Optional.of(reviewer));
+  var result=new ReviewService(reviews,mock(CustomerOrderRepository.class),users)
+   .moderate("employee@example.test",8L,ModerationStatus.APPROVED);
+  assertThat(result.status()).isEqualTo(ModerationStatus.APPROVED);
+ }
  private CustomerOrder completedOrder(){
   var customer=new User();customer.setFirstName("Client");
   var menu=new Menu();ReflectionTestUtils.setField(menu,"id",1L);menu.setTitle("Menu Test");

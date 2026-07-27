@@ -46,4 +46,15 @@ describe('OrderService', () => {
     expect(request.request.body).toEqual({ reason: 'Changement de programme', contactMode: 'CLIENT_EMAIL' });
     request.flush({});
   });
+
+  it('uses employee list, detail and transition endpoints', () => {
+    service.employeeOrders().subscribe();
+    expect(http.expectOne(r => r.url.endsWith('/employee/orders?size=100')).request.method).toBe('GET');
+    service.employeeDetail(9).subscribe();
+    expect(http.expectOne(r => r.url.endsWith('/employee/orders/9')).request.method).toBe('GET');
+    service.transition(9, 'ACCEPTED', 'Commande validée').subscribe();
+    const transition = http.expectOne(r => r.url.endsWith('/employee/orders/9/status'));
+    expect(transition.request.method).toBe('PATCH');
+    expect(transition.request.body).toEqual({ status: 'ACCEPTED', comment: 'Commande validée' });
+  });
 });

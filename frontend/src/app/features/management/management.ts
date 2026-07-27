@@ -28,13 +28,23 @@ export class CatalogManagementComponent{
  addDish(){this.api.createDish(this.dish).subscribe(()=>{this.dish={name:'',description:'',type:'ENTRY',active:true,allergenIds:[]};this.load();});}
 }
 
-@Component({standalone:true,template:`<section class="container section"><h1>Modération des avis</h1>
-<div class="cards">@for(r of reviews();track r.id){<article class="card"><h2>{{r.menuTitle}} · {{r.rating}}/5</h2><p>{{r.comment}}</p>
-<button class="button small" (click)="moderate(r,'approve')">Approuver</button> <button class="button secondary small" (click)="moderate(r,'reject')">Refuser</button></article>}
-@empty{<p>Aucun avis en attente.</p>}</div></section>`})
+@Component({standalone:true,template:`<section class="container section"><div class="section-heading"><h1>Modération des avis</h1>
+<button class="button secondary small" type="button" (click)="load()" [disabled]="loading()">Actualiser</button></div>
+@if(loading()){<p role="status">Chargement des avis…</p>}@else if(error()){<p class="alert" role="alert">{{error()}}</p>}
+@else{<div class="cards">@for(r of reviews();track r.id){<article class="card"><h2>{{r.menuTitle}} · {{r.rating}}/5</h2>
+<p>Commande n° {{r.orderId}} · {{r.customerFirstName}} · {{r.createdAt}}</p><p>{{r.comment}}</p><p class="tag">{{r.status}}</p>
+<button class="button small" type="button" [disabled]="processing()===r.id" (click)="moderate(r,'approve')">Approuver</button>
+<button class="button secondary small" type="button" [disabled]="processing()===r.id" (click)="moderate(r,'reject')">Refuser</button></article>}
+@empty{<p>Aucun avis en attente.</p>}</div>}
+@if(message()){<p class="alert" aria-live="polite">{{message()}}</p>}</section>`,
+styles:[`.section-heading{display:flex;gap:1rem;align-items:center;justify-content:space-between;flex-wrap:wrap}`]})
 export class ReviewModerationComponent{
- private api=inject(BusinessService);reviews=signal<Review[]>([]);constructor(){this.load();}load(){this.api.pendingReviews().subscribe(v=>this.reviews.set(v));}
- moderate(r:Review,a:'approve'|'reject'){this.api.moderateReview(r.id,a).subscribe(()=>this.load());}
+ private api=inject(BusinessService);reviews=signal<Review[]>([]);loading=signal(true);processing=signal<number|null>(null);error=signal('');message=signal('');
+ constructor(){this.load();}load(){this.loading.set(true);this.error.set('');this.api.pendingReviews().subscribe({
+  next:v=>{this.reviews.set(v);this.loading.set(false);},error:()=>{this.error.set('Impossible de charger les avis.');this.loading.set(false);}});}
+ moderate(r:Review,a:'approve'|'reject'){if(this.processing())return;this.processing.set(r.id);this.error.set('');
+  this.api.moderateReview(r.id,a).subscribe({next:()=>{this.processing.set(null);this.message.set(a==='approve'?'Avis approuvé.':'Avis refusé.');this.load();},
+   error:e=>{this.processing.set(null);this.error.set(e.error?.message??'La modération a échoué.');}});}
 }
 
 @Component({standalone:true,imports:[FormsModule],template:`<section class="container section"><h1>Employés</h1>

@@ -45,10 +45,13 @@ public class OrderService {
   return View.from(o);
  }
  @Transactional(readOnly=true) public Page<View> mine(String email,Pageable p){return orders.findByCustomerEmailIgnoreCaseOrderByCreatedAtDesc(email,p).map(View::from);}
- @Transactional(readOnly=true) public Page<View> all(Pageable p){return orders.findAllByOrderByCreatedAtDesc(p).map(View::from);}
+ @Transactional(readOnly=true) public Page<EmployeeView> all(Pageable p){return orders.findAllByOrderByCreatedAtDesc(p).map(EmployeeView::from);}
  @Transactional(readOnly=true) public Detail mineDetail(String email,Long id){return detail(orders.findByIdAndCustomerEmailIgnoreCase(id,email)
   .orElseThrow(()->new NotFoundException("Commande introuvable")));}
- @Transactional(readOnly=true) public Detail employeeDetail(Long id){return detail(orders.findById(id).orElseThrow(()->new NotFoundException("Commande introuvable")));}
+ @Transactional(readOnly=true) public EmployeeDetail employeeDetail(Long id){
+  var order=orders.findById(id).orElseThrow(()->new NotFoundException("Commande introuvable"));
+  return new EmployeeDetail(EmployeeView.from(order),history(order));
+ }
  @Transactional public View cancelMine(String email,Long id,Cancellation r){
   var o=orders.findLockedById(id).orElseThrow(()->new NotFoundException("Commande introuvable")); var actor=user(email);
   if(!o.getCustomer().getId().equals(actor.getId())) throw new NotFoundException("Commande introuvable");
@@ -94,8 +97,9 @@ public class OrderService {
  private String normalize(String value){return java.text.Normalizer.normalize(value.trim().toLowerCase(java.util.Locale.ROOT),java.text.Normalizer.Form.NFD).replaceAll("\\p{M}","").replaceAll("\\s+"," ");}
  private User user(String email){return users.findByEmailIgnoreCase(email).filter(User::isEnabled)
   .orElseThrow(()->new NotFoundException("Utilisateur introuvable"));}
- private Detail detail(CustomerOrder o){var entries=history.findByOrderIdOrderByChangedAtAsc(o.getId()).stream()
+ private Detail detail(CustomerOrder o){return new Detail(View.from(o),history(o),reviews.existsByOrderId(o.getId()));}
+ private java.util.List<History> history(CustomerOrder o){return history.findByOrderIdOrderByChangedAtAsc(o.getId()).stream()
   .map(h->new History(h.getPreviousStatus(),h.getNewStatus(),h.getChangedAt(),actorLabel(h.getChangedBy()),h.getComment())).toList();
-  return new Detail(View.from(o),entries,reviews.existsByOrderId(o.getId()));}
+ }
  private String actorLabel(User actor){if(actor==null)return null;return actor.getRole()==Role.USER?"Client":"Équipe Vite & Gourmand";}
 }

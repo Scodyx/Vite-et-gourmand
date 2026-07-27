@@ -4,7 +4,7 @@ import { ActivatedRoute,Router,RouterLink } from '@angular/router';
 import { FormBuilder,ReactiveFormsModule,Validators } from '@angular/forms';
 import { MenuService } from '../../core/services/menu.service';
 import { OrderService } from '../../core/services/order.service';
-import { Order,OrderStatus } from '../../core/models/order';
+import { Order } from '../../core/models/order';
 import { orderStatusLabel } from '../../core/models/order-status';
 
 @Component({standalone:true,imports:[CommonModule,RouterLink],template:`
@@ -56,21 +56,6 @@ export class OrderCreateComponent{
  constructor(){this.menus.detail(this.route.snapshot.paramMap.get('slug')!).subscribe(m=>{this.menu.set(m);this.form.controls.personCount.setValue(m.minimumPersons);});}
  submit(){if(this.form.invalid||!this.menu())return;this.loading.set(true);this.orders.create({menuId:this.menu().id,...this.form.getRawValue()}).subscribe({
   next:()=>this.router.navigateByUrl('/espace'),error:e=>{this.message.set(e.error?.message??'La commande a échoué.');this.loading.set(false);}});}
-}
-
-@Component({standalone:true,imports:[CommonModule],template:`
-<section class="container section"><p class="eyebrow">Espace équipe</p><h1>Gestion des commandes</h1>
-<div class="cards">@for(o of orders();track o.id){<article class="card"><h2>{{o.orderNumber}}</h2><p>{{o.menuTitle}} — {{o.personCount}} personnes</p>
-<p>{{o.prestationDate|date:'dd/MM/yyyy'}} — <span class="tag">{{label(o.status)}}</span></p>
-<select [value]="o.status" (change)="change(o,$any($event.target).value)">@for(s of next(o.status);track s){<option [value]="s">{{label(s)}}</option>}</select>
-</article>}@empty{<p>Aucune commande.</p>}</div></section>`})
-export class EmployeeDashboardComponent{
- private api=inject(OrderService);orders=signal<Order[]>([]);
- constructor(){this.load();}load(){this.api.all().subscribe(p=>this.orders.set(p.content));}label=orderStatusLabel;
- next(s:OrderStatus):OrderStatus[]{const n:Partial<Record<OrderStatus,OrderStatus[]>>={PENDING:['PENDING','ACCEPTED','CANCELLED'],ACCEPTED:['ACCEPTED','IN_PREPARATION','CANCELLED'],
- IN_PREPARATION:['IN_PREPARATION','OUT_FOR_DELIVERY'],OUT_FOR_DELIVERY:['OUT_FOR_DELIVERY','DELIVERED'],DELIVERED:['DELIVERED','WAITING_FOR_EQUIPMENT_RETURN','COMPLETED'],
- WAITING_FOR_EQUIPMENT_RETURN:['WAITING_FOR_EQUIPMENT_RETURN','COMPLETED']};return n[s]??[s];}
- change(o:Order,s:OrderStatus){if(s!==o.status)this.api.transition(o.id,s).subscribe(()=>this.load());}
 }
 
 @Component({standalone:true,template:`<section class="container section"><p class="eyebrow">Administration</p>

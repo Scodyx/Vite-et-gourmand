@@ -27,4 +27,13 @@ public final class OrderDtos {
  }
  public record History(OrderStatus previousStatus,OrderStatus newStatus,Instant changedAt,String actor,String comment){}
  public record Detail(View order,List<History> history,boolean reviewSubmitted){}
+ public record Customer(String firstName,String lastName,String email,String phone){}
+ public record EmployeeView(View order,Customer customer){
+  public static EmployeeView from(CustomerOrder o){
+   var customer=o.getCustomer();
+   return new EmployeeView(View.from(o),new Customer(customer.getFirstName(),customer.getLastName(),
+    customer.getEmail(),customer.getPhone()));
+  }
+ }
+ public record EmployeeDetail(EmployeeView summary,List<History> history){}
 }

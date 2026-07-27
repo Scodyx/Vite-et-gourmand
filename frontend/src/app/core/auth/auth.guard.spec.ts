@@ -29,4 +29,12 @@ describe('authentication guards', () => {
     expect(result).toBe(redirect);
     expect(router.createUrlTree).toHaveBeenCalledWith(['/interdit']);
   });
+
+  it('allows EMPLOYEE and ADMIN identities on employee routes', () => {
+    auth.isAuthenticated.and.returnValue(true);
+    auth.hasRole.and.returnValue(true);
+    const route = { data: { roles: ['EMPLOYEE', 'ADMIN'] } } as never;
+    expect(TestBed.runInInjectionContext(() => roleGuard(route, {} as never))).toBeTrue();
+    expect(auth.hasRole).toHaveBeenCalledWith(['EMPLOYEE', 'ADMIN']);
+  });
 });

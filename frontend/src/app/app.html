@@ -5,7 +5,7 @@
 <a routerLink="/menus" routerLinkActive="active">Menus</a><a routerLink="/contact" routerLinkActive="active">Contact</a>
 @if(!auth.isAuthenticated()){<a routerLink="/connexion">Connexion</a><a class="button small" routerLink="/inscription">Inscription</a>}
 @else{<a routerLink="/espace">Mes commandes</a><a routerLink="/profil">Mon profil</a>
-@if(auth.hasRole(['EMPLOYEE','ADMIN'])){<a routerLink="/employe">Commandes équipe</a><a routerLink="/employe/catalogue">Catalogue</a><a routerLink="/employe/avis">Avis</a>}
+@if(auth.hasRole(['EMPLOYEE','ADMIN'])){<a routerLink="/employe">Espace équipe</a><a routerLink="/employe/commandes">Commandes</a><a routerLink="/employe/catalogue">Catalogue</a><a routerLink="/employe/avis">Avis</a>}
 @if(auth.hasRole(['ADMIN'])){<a routerLink="/admin/employes">Employés</a><a routerLink="/admin/statistiques">Statistiques</a>}
 <button class="link-button" (click)="auth.logout()">Déconnexion</button>}</div></nav></header>
 <main id="main-content"><router-outlet /></main>

@@ -14,3 +14,15 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 export function orderStatusLabel(status: OrderStatus | null): string {
   return status ? ORDER_STATUS_LABELS[status] : '—';
 }
+
+export function allowedOrderTransitions(status: OrderStatus, equipmentLoaned: boolean): OrderStatus[] {
+  const transitions: Partial<Record<OrderStatus, OrderStatus[]>> = {
+    PENDING: ['ACCEPTED', 'CANCELLED'],
+    ACCEPTED: ['IN_PREPARATION', 'CANCELLED'],
+    IN_PREPARATION: ['OUT_FOR_DELIVERY'],
+    OUT_FOR_DELIVERY: ['DELIVERED'],
+    DELIVERED: equipmentLoaned ? ['WAITING_FOR_EQUIPMENT_RETURN'] : ['COMPLETED'],
+    WAITING_FOR_EQUIPMENT_RETURN: ['COMPLETED']
+  };
+  return transitions[status] ?? [];
+}

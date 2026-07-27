@@ -5,6 +5,7 @@ import fr.vitegourmand.menu.repository.MenuRepository;
 import fr.vitegourmand.order.dto.OrderDtos.Create;
 import fr.vitegourmand.order.dto.OrderDtos.Cancellation;
 import fr.vitegourmand.order.dto.OrderDtos.Update;
+import fr.vitegourmand.order.dto.OrderDtos.Transition;
 import fr.vitegourmand.order.entity.CancellationContactMode;
 import fr.vitegourmand.order.entity.CustomerOrder;
 import fr.vitegourmand.order.entity.OrderStatus;
@@ -84,6 +85,25 @@ class OrderServiceTest {
   assertThatThrownBy(()->service.mineDetail("client@example.test",9L))
    .isInstanceOf(fr.vitegourmand.common.exception.NotFoundException.class);
   verifyNoInteractions(history,reviews);
+ }
+ @Test void employeeDetailContainsOperationalCustomerDataAndHistory(){
+  var order=order(10,OrderStatus.ACCEPTED);user.setPhone("0600000000");
+  when(orders.findById(9L)).thenReturn(Optional.of(order));
+  when(history.findByOrderIdOrderByChangedAtAsc(9L)).thenReturn(java.util.List.of());
+  var detail=service.employeeDetail(9L);
+  assertThat(detail.summary().customer().email()).isEqualTo("client@example.test");
+  assertThat(detail.summary().customer().phone()).isEqualTo("0600000000");
+  assertThat(detail.summary().order().orderNumber()).isEqualTo("VG-TEST");
+ }
+ @Test void employeeTransitionPersistsItsHistoryComment(){
+  var order=order(10,OrderStatus.PENDING);when(orders.findLockedById(9L)).thenReturn(Optional.of(order));
+  service.transition("client@example.test",9L,new Transition(OrderStatus.ACCEPTED,"Commande validée"));
+  assertThat(order.getStatus()).isEqualTo(OrderStatus.ACCEPTED);
+  var captor=org.mockito.ArgumentCaptor.forClass(fr.vitegourmand.order.entity.OrderStatusHistory.class);
+  verify(history).save(captor.capture());
+  assertThat(captor.getValue().getPreviousStatus()).isEqualTo(OrderStatus.PENDING);
+  assertThat(captor.getValue().getNewStatus()).isEqualTo(OrderStatus.ACCEPTED);
+  assertThat(captor.getValue().getComment()).isEqualTo("Commande validée");
  }
  private CustomerOrder order(int count,OrderStatus status){
   var order=new CustomerOrder();ReflectionTestUtils.setField(order,"id",9L);order.setCustomer(user);order.setMenu(menu);
