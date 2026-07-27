@@ -160,3 +160,82 @@ Limitations principales : JDK et Docker doivent être installés localement ; la
 Bordeaux est fournie de manière contrôlée en développement et devra être remplacée par un service
 cartographique côté serveur ; les interfaces de gestion des images, associations menu/plat et
 horaires restent moins avancées que les API ; une revue juridique des pages légales reste nécessaire.
+
+## Déploiement public
+
+La cible préparée est un Static Site Render pour Angular, un Web Service Docker Render pour
+Spring Boot, PostgreSQL sur Neon, MongoDB sur Atlas et Brevo pour SMTP. Le fichier
+[`render.yaml`](render.yaml) décrit les deux services Render sur la branche `develop`. Il ne crée
+aucune base Render.
+
+### 1. Services de données et e-mail
+
+1. Créer un projet et une base PostgreSQL dans Neon, puis copier la chaîne JDBC fournie en veillant
+   à conserver TLS, par exemple `jdbc:postgresql://<hôte>/<base>?sslmode=require`.
+2. Créer un cluster MongoDB Atlas, un utilisateur limité à la base de statistiques et autoriser
+   l'accès réseau depuis Render. Utiliser une URI `mongodb+srv://...` dans `MONGODB_URI`.
+3. Dans Brevo, créer une clé SMTP distincte. Configurer `smtp-relay.brevo.com`, le port `2525`,
+   l'authentification et STARTTLS. L'adresse `MAIL_FROM` doit être un expéditeur validé dans Brevo.
+
+### 2. Backend Render
+
+Créer le service depuis le Blueprint ou comme Web Service Docker avec `backend` comme dossier
+racine. Le conteneur écoute sur `0.0.0.0:${PORT:-8080}`. Saisir manuellement toutes les variables
+marquées `sync: false` dans Render. Flyway applique les migrations existantes au démarrage sur Neon.
+
+Pour initialiser le compte de démonstration, activer temporairement `INITIAL_ADMIN_ENABLED`, saisir
+`admin@vite-gourmand.test` dans `INITIAL_ADMIN_EMAIL` et fournir le mot de passe convenu directement
+dans le tableau de bord Render. Ne jamais placer ce mot de passe dans Git. L'initialiseur normalise
+l'adresse, hache le mot de passe avec BCrypt et ne modifie pas un compte déjà existant. Remettre
+`INITIAL_ADMIN_ENABLED=false` après le premier démarrage réussi.
+
+Vérifications :
+
+- `https://<backend-render>/api/v1/public/health` renvoie `{"status":"UP"}` ;
+- `https://<backend-render>/swagger-ui/index.html` affiche Swagger ;
+- `/v3/api-docs` contient le schéma `bearerAuth` ;
+- un e-mail de bienvenue ou de contact arrive via Brevo.
+
+### 3. Frontend Render
+
+Créer le Static Site avec `frontend` comme dossier racine, la commande
+`npm ci && npm run build:render` et le dossier publié `dist/frontend/browser`. Définir `API_URL`
+avec l'URL HTTPS complète du backend terminée par `/api/v1`. Le build génère
+`runtime-config.js`; aucune URL publique n'est figée dans le code source. La règle Render `/*`
+vers `/index.html` assure le fallback SPA tout en laissant Render servir les fichiers existants.
+
+Après publication, renseigner l'origine exacte du Static Site, sans joker, dans
+`CORS_ALLOWED_ORIGINS` et `FRONTEND_URL`, puis redéployer le backend.
+
+### Variables d'environnement
+
+| Nom | Exemple non sensible | Requise en production | Usage |
+|---|---|---:|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` | oui | Active la configuration Spring de production |
+| `PORT` | `10000` | fournie par Render | Port HTTP du backend |
+| `DATABASE_URL` | `jdbc:postgresql://host/db?sslmode=require` | oui | URL JDBC Neon |
+| `POSTGRES_USER` | `app_owner` | oui | Utilisateur Neon |
+| `POSTGRES_PASSWORD` | `<secret-neon>` | oui | Mot de passe Neon |
+| `MONGODB_URI` | `mongodb+srv://user:<secret>@cluster/db` | oui | URI MongoDB Atlas |
+| `JWT_SECRET` | `<secret-aleatoire-64-caracteres>` | oui | Signature JWT |
+| `JWT_ACCESS_EXPIRATION` | `900000` | non | Durée access token en millisecondes |
+| `JWT_REFRESH_EXPIRATION` | `604800000` | non | Durée refresh token en millisecondes |
+| `CORS_ALLOWED_ORIGINS` | `https://frontend.example` | oui | Origines frontend, séparées par des virgules |
+| `FRONTEND_URL` | `https://frontend.example` | oui | Liens envoyés par e-mail |
+| `CONTACT_EMAIL` | `contact@example.test` | oui | Destinataire des contacts |
+| `MAIL_HOST` | `smtp-relay.brevo.com` | oui | Serveur SMTP |
+| `MAIL_PORT` | `2525` | oui | Port SMTP Brevo |
+| `MAIL_USERNAME` | `<login-smtp-brevo>` | oui | Identifiant SMTP |
+| `MAIL_PASSWORD` | `<cle-smtp-brevo>` | oui | Clé SMTP |
+| `MAIL_SMTP_AUTH` | `true` | non | Authentification SMTP hors profil prod |
+| `MAIL_STARTTLS_ENABLE` | `true` | non | STARTTLS hors profil prod |
+| `MAIL_FROM` | `no-reply@example.test` | oui | Expéditeur Brevo validé |
+| `INITIAL_ADMIN_ENABLED` | `false` | non | Active ponctuellement l'initialisation ADMIN |
+| `INITIAL_ADMIN_EMAIL` | `admin@vite-gourmand.test` | si initialisation | Adresse ADMIN initiale |
+| `INITIAL_ADMIN_PASSWORD` | `<saisie-manuelle>` | si initialisation | Mot de passe initial, jamais commité |
+| `INITIAL_ADMIN_FIRST_NAME` | `Admin` | non | Prénom du compte initial |
+| `INITIAL_ADMIN_LAST_NAME` | `Vite Gourmand` | non | Nom du compte initial |
+| `API_URL` | `https://backend.example/api/v1` | oui, frontend | URL centralisée utilisée au build Render |
+
+Les secrets doivent être saisis dans Render, Neon, Atlas ou Brevo et ne doivent jamais être placés
+dans `.env.example`, `render.yaml`, une commande partagée, une capture ou un commit.
