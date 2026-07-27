@@ -100,16 +100,38 @@ Set-Location backend
 ```
 
 Après `docker compose up -d` et `.\mvnw.cmd clean package`, le smoke test privilégié génère
-en mémoire des identifiants uniques, crée l'EMPLOYEE via l'API ADMIN réelle, vérifie les permissions
-et désactive ensuite cet EMPLOYEE :
+en mémoire des identifiants uniques sous le domaine réservé `example.test`, crée l'EMPLOYEE via
+l'API ADMIN réelle, vérifie les permissions et exécute le smoke navigateur employé :
 
 ```powershell
 Set-Location ..
 .\scripts\smoke-privileged.ps1
 ```
 
-Le script n'affiche aucun mot de passe, JWT ou refresh token. Ne jamais commiter de mot de passe
-ni le fichier `.env`.
+Le bloc `finally` désactive ensuite, par leur adresse exacte et leur rôle attendu, l'EMPLOYEE et
+l'ADMIN temporaires. Il contrôle que leurs connexions sont refusées, supprime les secrets de
+l'environnement du processus et arrête Spring Boot et Angular. Aucun compte privilégié actif créé
+par une exécution réussie ne doit subsister. Le script retourne un code non nul si le scénario ou
+ce nettoyage obligatoire échoue.
+
+Le test navigateur utilise Playwright avec Chromium. Le navigateur est installé dans le cache
+local de l'utilisateur, jamais dans Git :
+
+```powershell
+Set-Location frontend
+npm.cmd install
+npx.cmd playwright install chromium
+$env:E2E_EMPLOYEE_EMAIL = "<adresse-temporaire>"
+$env:E2E_EMPLOYEE_PASSWORD = Read-Host "Mot de passe temporaire"
+npm.cmd run e2e:smoke
+Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD
+```
+
+En usage normal, `smoke-privileged.ps1` fournit lui-même ces variables en mémoire. En cas d'échec
+de nettoyage, conserver la sortie non secrète, vérifier que Docker et PostgreSQL sont disponibles,
+puis relancer le script ; ne jamais désactiver des comptes par une recherche large ou par leur seul
+rôle. Le script n'affiche aucun mot de passe, JWT ou refresh token. Ne jamais commiter de mot de
+passe ni le fichier `.env`.
 
 ## Git et liens
 

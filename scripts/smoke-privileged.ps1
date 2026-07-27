@@ -1,10 +1,20 @@
-param([string]$AdminEmail = "", [string]$AdminPassword = "")
+param(
+    [string]$AdminEmail = "",
+    [string]$AdminPassword = "",
+    [switch]$FailAfterEmployeeLogin,
+    [switch]$FailCleanupAfterDeactivation
+)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $backend = Join-Path $root "backend"
+$frontend = Join-Path $root "frontend"
 $jar = Join-Path $backend "target\vite-et-gourmand-api-0.1.0-SNAPSHOT.jar"
 $base = "http://127.0.0.1:8080/api/v1"
-$process = $null
+$backendProcess = $null
+$frontendProcess = $null
+$employeeCreated = $false
+$scenarioError = $null
+$cleanupErrors = [Collections.Generic.List[string]]::new()
 function New-RandomPassword {
     $bytes = New-Object byte[] 24
     $generator = [Security.Cryptography.RandomNumberGenerator]::Create()
@@ -26,10 +36,83 @@ function Expect([string]$Name,$Response,[int[]]$Codes) {
     if($Response.Code-notin $Codes){throw "$Name returned HTTP $($Response.Code), expected $($Codes-join ' or ')"}
     Write-Output "$Name=$($Response.Code)"
 }
+function Stop-ProcessTree([Diagnostics.Process]$Process) {
+    if($null-eq $Process -or $Process.HasExited){return}
+    Get-CimInstance Win32_Process -Filter "ParentProcessId=$($Process.Id)" -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            $child=Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue
+            if($child){Stop-ProcessTree $child}
+        }
+    Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+}
+function Assert-SmokeIdentity([string]$Email,[ValidateSet("ADMIN","EMPLOYEE")][string]$Role) {
+    $expectedPrefix=if($Role-eq "ADMIN"){"smoke.admin."}else{"smoke.employee."}
+    $escaped=[regex]::Escape($expectedPrefix)
+    if($Email-notmatch "^$escaped[0-9]+@example[.]test$"){
+        throw "Cleanup guard rejected a non-smoke $Role account."
+    }
+    $expectedPrefix
+}
+function Disable-SmokeAccount([string]$Email,[ValidateSet("ADMIN","EMPLOYEE")][string]$Role) {
+    $expectedPrefix=Assert-SmokeIdentity $Email $Role
+    $dbUser=(& docker compose exec -T postgres printenv POSTGRES_USER).Trim()
+    $dbName=(& docker compose exec -T postgres printenv POSTGRES_DB).Trim()
+    if($LASTEXITCODE-ne 0-or [string]::IsNullOrWhiteSpace($dbUser)-or [string]::IsNullOrWhiteSpace($dbName)){
+        throw "Unable to resolve the local PostgreSQL configuration."
+    }
+    $pattern="$expectedPrefix%@example.test"
+    $sql=@'
+UPDATE app_user
+SET enabled = false
+WHERE email = :'smoke_email'
+  AND role = :'smoke_role'
+  AND email LIKE :'smoke_pattern'
+RETURNING id;
+'@
+    $result=$sql | & docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 `
+        -v "smoke_email=$Email" -v "smoke_role=$Role" -v "smoke_pattern=$pattern" `
+        -U $dbUser -d $dbName -tA
+    if($LASTEXITCODE-ne 0-or @($result|Where-Object{$_-match "^[0-9]+$"}).Count-ne 1){
+        throw "Exact $Role smoke account was not deactivated."
+    }
+}
+function Start-EmployeeBrowserSmoke {
+    if(Get-NetTCPConnection -State Listen -LocalPort 4200 -ErrorAction SilentlyContinue){
+        throw "Port 4200 is already used; nothing was stopped."
+    }
+    $frontLog=Join-Path $backend "target\employee-e2e.log"
+    $frontErr=Join-Path $backend "target\employee-e2e-error.log"
+    $script:frontendProcess=Start-Process cmd.exe -ArgumentList "/c","npm.cmd start -- --host 127.0.0.1 --port 4200" `
+        -WorkingDirectory $frontend -WindowStyle Hidden -RedirectStandardOutput $frontLog `
+        -RedirectStandardError $frontErr -PassThru
+    $ready=$false
+    for($i=0;$i-lt 90;$i++){
+        Start-Sleep 1
+        try {
+            $response=Invoke-WebRequest "http://127.0.0.1:4200" -UseBasicParsing -TimeoutSec 2
+            if($response.StatusCode-eq 200){$ready=$true;break}
+        } catch {}
+        if($script:frontendProcess.HasExited){break}
+    }
+    if(-not $ready){throw "Angular did not become ready."}
+    $env:E2E_EMPLOYEE_EMAIL=$employeeEmail
+    $env:E2E_EMPLOYEE_PASSWORD=$employeePassword
+    try {
+        & npm.cmd run e2e:smoke --prefix $frontend
+        if($LASTEXITCODE-ne 0){throw "Playwright employee smoke test failed."}
+    } finally {
+        Remove-Item Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD -ErrorAction SilentlyContinue
+    }
+}
 if(-not(Test-Path -LiteralPath $jar)){throw "Build the backend JAR first."}
 if(Get-NetTCPConnection -State Listen -LocalPort 8080 -ErrorAction SilentlyContinue){throw "Port 8080 is already used; nothing was stopped."}
+$guardRejected=$false
+try {Assert-SmokeIdentity "admin@example.test" ADMIN|Out-Null}catch{$guardRejected=$true}
+if(-not $guardRejected){throw "Cleanup guard accepted a non-smoke account."}
+Write-Output "CLEANUP_GUARD_NON_SMOKE=REJECTED"
 if([string]::IsNullOrWhiteSpace($AdminEmail)){$AdminEmail="smoke.admin.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())@example.test"}
 if([string]::IsNullOrWhiteSpace($AdminPassword)){$AdminPassword=New-RandomPassword}
+Assert-SmokeIdentity $AdminEmail ADMIN|Out-Null
 $employeeEmail="smoke.employee.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())@example.test"
 $employeePassword=New-RandomPassword
 $userEmail="smoke.user.$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())@example.test"
@@ -37,23 +120,24 @@ $userPassword=New-RandomPassword
 try {
     $env:INITIAL_ADMIN_ENABLED="true";$env:INITIAL_ADMIN_EMAIL=$AdminEmail;$env:INITIAL_ADMIN_PASSWORD=$AdminPassword
     $log=Join-Path $backend "target\privileged-smoke.log";$err=Join-Path $backend "target\privileged-smoke-error.log"
-    $process=Start-Process java -ArgumentList "-jar `"$jar`" --spring.profiles.active=dev" -WorkingDirectory $backend `
+    $backendProcess=Start-Process java -ArgumentList "-jar `"$jar`" --spring.profiles.active=dev" -WorkingDirectory $backend `
       -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError $err -PassThru
     Remove-Item Env:INITIAL_ADMIN_ENABLED,Env:INITIAL_ADMIN_EMAIL,Env:INITIAL_ADMIN_PASSWORD -ErrorAction SilentlyContinue
     $ready=$false
-    for($i=0;$i-lt 60;$i++){Start-Sleep 1;$health=Request GET "$base/public/reviews";if($health.Code-eq 200){$ready=$true;break};if($process.HasExited){break}}
+    for($i=0;$i-lt 60;$i++){Start-Sleep 1;$health=Request GET "$base/public/reviews";if($health.Code-eq 200){$ready=$true;break};if($backendProcess.HasExited){break}}
     if(-not $ready){throw "Backend did not become ready."}
     Expect ANONYMOUS_EMPLOYEE (Request GET "$base/employee/orders") 401
     $admin=Request POST "$base/auth/login" @{} @{email=$AdminEmail;password=$AdminPassword};Expect ADMIN_LOGIN $admin 200
     $ah=@{Authorization="Bearer $($admin.Content.accessToken)"}
     Expect ADMIN_EMPLOYEES (Request GET "$base/admin/employees" $ah) 200
     $created=Request POST "$base/admin/employees" $ah @{firstName="Smoke";lastName="Employee";email=$employeeEmail;temporaryPassword=$employeePassword;phone="0600000000"}
-    Expect ADMIN_CREATE_EMPLOYEE $created 201;$employeeId=$created.Content.id
+    Expect ADMIN_CREATE_EMPLOYEE $created 201;$employeeId=$created.Content.id;$employeeCreated=$true
     Expect ADMIN_EMPLOYEE_ACCESS (Request GET "$base/employee/orders?page=0&size=1" $ah) 200
     Expect ADMIN_STATISTICS (Request GET "$base/admin/statistics/menus" $ah) 200
     Expect ADMIN_REBUILD (Request POST "$base/admin/statistics/rebuild" $ah @{}) 200
     $employee=Request POST "$base/auth/login" @{} @{email=$employeeEmail;password=$employeePassword};Expect EMPLOYEE_LOGIN $employee 200
     $eh=@{Authorization="Bearer $($employee.Content.accessToken)"}
+    if($FailAfterEmployeeLogin){throw "Intentional intermediate failure used to validate finally cleanup."}
     Expect EMPLOYEE_ORDERS (Request GET "$base/employee/orders?page=0&size=1" $eh) 200
     Expect EMPLOYEE_ADMIN_FORBIDDEN (Request GET "$base/admin/employees" $eh) 403
     $user=Request POST "$base/auth/register" @{} @{firstName="Smoke";lastName="Customer";phone="0600000001";email=$userEmail;
@@ -76,6 +160,7 @@ try {
     Expect EMPLOYEE_INVALID_DATES (Request GET "$base/employee/orders?dateFrom=2030-02-01&dateTo=2030-01-01" $eh) 400
     Expect EMPLOYEE_MALFORMED_DATE (Request GET "$base/employee/orders?dateFrom=not-a-date" $eh) 400
     Expect EMPLOYEE_DETAIL (Request GET "$base/employee/orders/$orderId" $eh) 200
+    Start-EmployeeBrowserSmoke
     foreach($status in "ACCEPTED","IN_PREPARATION","OUT_FOR_DELIVERY","DELIVERED","COMPLETED"){
       Expect "EMPLOYEE_TRANSITION_$status" (Request PATCH "$base/employee/orders/$orderId/status" $eh @{status=$status;comment="Automated smoke transition"}) 200}
     $detail=Request GET "$base/employee/orders/$orderId" $eh;Expect EMPLOYEE_HISTORY $detail 200
@@ -85,9 +170,38 @@ try {
     Expect EMPLOYEE_PENDING_REVIEWS (Request GET "$base/employee/reviews/pending" $eh) 200
     Expect EMPLOYEE_APPROVE_REVIEW (Request PATCH "$base/employee/reviews/$($review.Content.id)/approve" $eh @{}) 200
     Expect PUBLIC_APPROVED_REVIEWS (Request GET "$base/public/reviews") 200
+} catch {
+    $scenarioError=$_
 } finally {
-    if($employeeId -and $ah){try{Request PATCH "$base/admin/employees/$employeeId/enabled?value=false" $ah|Out-Null}catch{}}
+    if($employeeCreated -and $employeeId -and $ah){
+        try {
+            $disabled=Request PATCH "$base/admin/employees/$employeeId/enabled?value=false" $ah
+            if($disabled.Code-notin 200,204){throw "Employee API deactivation returned HTTP $($disabled.Code)."}
+        } catch {$cleanupErrors.Add("EMPLOYEE API cleanup failed: $($_.Exception.Message)")}
+    }
+    if($employeeCreated){
+        try {Disable-SmokeAccount $employeeEmail EMPLOYEE;Write-Output "EMPLOYEE_CLEANUP=DEACTIVATED"}
+        catch {$cleanupErrors.Add("EMPLOYEE database cleanup failed: $($_.Exception.Message)")}
+    }
+    try {Disable-SmokeAccount $AdminEmail ADMIN;Write-Output "ADMIN_CLEANUP=DEACTIVATED"}
+    catch {$cleanupErrors.Add("ADMIN database cleanup failed: $($_.Exception.Message)")}
+    if($FailCleanupAfterDeactivation){$cleanupErrors.Add("Intentional cleanup failure used to validate the non-zero exit code.")}
+    if($backendProcess -and -not $backendProcess.HasExited){
+        if($employeeCreated){
+            try {Expect EMPLOYEE_RELOGIN_AFTER_CLEANUP (Request POST "$base/auth/login" @{} @{email=$employeeEmail;password=$employeePassword}) 401}
+            catch {$cleanupErrors.Add("EMPLOYEE reconnection check failed: $($_.Exception.Message)")}
+        }
+        try {Expect ADMIN_RELOGIN_AFTER_CLEANUP (Request POST "$base/auth/login" @{} @{email=$AdminEmail;password=$AdminPassword}) 401}
+        catch {$cleanupErrors.Add("ADMIN reconnection check failed: $($_.Exception.Message)")}
+    }
     $AdminPassword=$null;$employeePassword=$null;$userPassword=$null
-    Remove-Item Env:INITIAL_ADMIN_ENABLED,Env:INITIAL_ADMIN_EMAIL,Env:INITIAL_ADMIN_PASSWORD -ErrorAction SilentlyContinue
-    if($process -and -not $process.HasExited){Stop-Process $process.Id -Force -ErrorAction SilentlyContinue}
+    Remove-Item Env:INITIAL_ADMIN_ENABLED,Env:INITIAL_ADMIN_EMAIL,Env:INITIAL_ADMIN_PASSWORD,Env:E2E_EMPLOYEE_EMAIL,Env:E2E_EMPLOYEE_PASSWORD -ErrorAction SilentlyContinue
+    Stop-ProcessTree $frontendProcess
+    Stop-ProcessTree $backendProcess
 }
+if($cleanupErrors.Count-gt 0){
+    $details=$cleanupErrors-join " | "
+    if($scenarioError){Write-Error "SCENARIO_FAILED: $($scenarioError.Exception.Message)" -ErrorAction Continue}
+    throw "CLEANUP_FAILED: $details"
+}
+if($scenarioError){throw "SCENARIO_FAILED: $($scenarioError.Exception.Message)"}
