@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class ApplicationEmailService {
  private static final Logger log=LoggerFactory.getLogger(ApplicationEmailService.class);
- private final JavaMailSender sender;private final String contactEmail;
- public ApplicationEmailService(JavaMailSender s,@Value("${app.contact-email}") String c){sender=s;contactEmail=c;}
- public void send(String to,String subject,String body){try{var m=new SimpleMailMessage();m.setTo(to);m.setSubject(subject);m.setText(body);sender.send(m);}
+ private final JavaMailSender sender;private final String contactEmail;private final String fromEmail;
+ public ApplicationEmailService(JavaMailSender s,@Value("${app.contact-email}") String c,@Value("${app.mail.from}") String f){sender=s;contactEmail=c;fromEmail=f;}
+ public void send(String to,String subject,String body){try{var m=new SimpleMailMessage();m.setFrom(fromEmail);m.setTo(to);m.setSubject(subject);m.setText(body);sender.send(m);}
   catch(RuntimeException e){log.warn("Échec d'envoi de l'e-mail '{}': {}",subject,e.getClass().getSimpleName());}}
  public void welcome(String to,String firstName){send(to,"Bienvenue chez Vite & Gourmand","Bonjour "+firstName+",\n\nVotre espace client est prêt.");}
  public void orderConfirmation(String to,String number){send(to,"Confirmation de commande "+number,"Votre commande "+number+" a bien été enregistrée et attend notre validation.");}
