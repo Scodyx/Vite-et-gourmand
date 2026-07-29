@@ -8,23 +8,23 @@ import { Order } from '../../core/models/order';
 import { orderStatusLabel } from '../../core/models/order-status';
 
 @Component({standalone:true,imports:[CommonModule,RouterLink],template:`
-<section class="container section"><p class="eyebrow">Mon compte</p><h1>Tableau de bord</h1>
+<section class="container section dashboard"><div class="section-heading"><div><p class="eyebrow">Mon compte</p><h1>Tableau de bord</h1></div><a class="button secondary small" routerLink="/menus">Commander</a></div>
 @if(message()){<p class="alert">{{message()}}</p>}
 @if(!loading()){
 <div class="dashboard-summary"><article class="card"><strong>{{orders().length}}</strong><span>commandes au total</span></article>
 <article class="card"><strong>{{upcoming().length}}</strong><span>prestations à venir</span></article>
-<article class="card quick-links"><a routerLink="/profil">Mon profil</a><a href="#orders">Mes commandes</a></article></div>
+<nav class="card quick-links" aria-label="Accès rapides"><a routerLink="/profil">Mon profil</a><a href="#orders">Mes commandes</a></nav></div>
 <h2>Prochaines commandes</h2>
 <div class="cards">@for(o of upcoming().slice(0,2);track o.id){<article class="card"><h3>{{o.orderNumber}}</h3>
 <p>{{o.menuTitle}} — {{o.prestationDate|date:'dd/MM/yyyy'}}</p><p class="tag">{{label(o.status)}}</p>
 <a class="button secondary small" [routerLink]="['/espace/commandes',o.id]">Voir le détail</a></article>}
-@empty{<p>Aucune prestation à venir.</p>}</div>
+@empty{<p class="empty-state">Aucune prestation à venir.</p>}</div>
 <h2 id="orders">Dernières commandes</h2>
 <div class="cards">@for(o of orders();track o.id){<article class="card"><h3>{{o.orderNumber}}</h3>
 <p><strong>{{o.menuTitle}}</strong> — {{o.personCount}} personnes</p><p>{{o.prestationDate|date:'dd/MM/yyyy'}} à {{o.desiredDeliveryTime}}</p>
 <p class="tag">{{label(o.status)}}</p><p class="price">{{o.totalAmount|currency:'EUR'}}</p>
 <a class="button secondary small" [routerLink]="['/espace/commandes',o.id]">Voir le détail</a></article>}
-@empty{<div class="empty"><p>Aucune commande pour le moment.</p><a class="button" routerLink="/menus">Découvrir les menus</a></div>}</div>}</section>`})
+@empty{<div class="empty-state"><p>Aucune commande pour le moment.</p><a class="button small" routerLink="/menus">Découvrir les menus</a></div>}</div>}</section>`})
 export class UserDashboardComponent{
  private api=inject(OrderService);orders=signal<Order[]>([]);message=signal('');loading=signal(true);
  upcoming=computed(()=>this.orders().filter(o=>o.status!=='COMPLETED'&&o.status!=='CANCELLED'&&o.prestationDate>=new Date().toISOString().slice(0,10)));
