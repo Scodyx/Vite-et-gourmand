@@ -1,0 +1,9 @@
+.dashboard > .cards .card {
+  display: grid;
+  align-content: start;
+  gap: .35rem;
+}
+
+.dashboard > .cards .card p {
+  margin: .2rem 0;
+}

@@ -1,0 +1,42 @@
+ <section class="container section">
+  <div class="section-heading"><div><p class="eyebrow">Espace équipe</p><h1>Commandes</h1></div>
+   <button class="button secondary small" type="button" (click)="load()" [disabled]="loading()">Actualiser</button></div>
+  <form class="card filters" aria-label="Filtres des commandes" (submit)="$event.preventDefault()">
+   <label>Statut<select [(ngModel)]="status" name="status" (ngModelChange)="filtersChanged()"><option value="">Tous les statuts</option>
+    @for(entry of statusEntries;track entry[0]){<option [value]="entry[0]">{{entry[1]}}</option>}</select></label>
+   <label>Date minimale<input type="date" [(ngModel)]="dateFrom" name="dateFrom" (change)="filtersChanged()"></label>
+   <label>Date maximale<input type="date" [(ngModel)]="dateTo" name="dateTo" (change)="filtersChanged()"></label>
+   <label>Recherche<input [(ngModel)]="search" name="search" (ngModelChange)="searchChanged($event)" placeholder="N° de commande, client ou e-mail"></label>
+   <label>Période<select [(ngModel)]="dateScope" name="dateScope" (ngModelChange)="filtersChanged()">
+    <option value="ALL">Toutes</option><option value="TODAY">Aujourd’hui</option><option value="UPCOMING">À venir</option></select></label>
+   <label>Tri<select [(ngModel)]="sort" name="sort" (ngModelChange)="filtersChanged()">
+    <option value="serviceDate">Date de prestation</option><option value="createdAt">Date de création</option>
+    <option value="totalAmount">Montant</option><option value="status">Statut</option><option value="orderNumber">Numéro</option></select></label>
+   <label>Direction<select [(ngModel)]="direction" name="direction" (ngModelChange)="filtersChanged()">
+    <option value="desc">Décroissant</option><option value="asc">Croissant</option></select></label>
+   <button class="button secondary small" type="button" (click)="resetFilters()">Réinitialiser</button>
+  </form>
+  @if(loading()){<p role="status">Chargement des commandes…</p>}
+  @else if(error()){<p class="alert" role="alert">{{error()}}</p>}
+  @else{
+   <p aria-live="polite">{{totalElements()}} commande(s) · page {{page()+1}} sur {{totalPages()||1}}</p>
+   <div class="table-scroll"><table><thead><tr><th>Commande</th><th>Client</th><th>Menu</th><th>Prestation</th>
+    <th>Personnes</th><th>Ville</th><th>Total</th><th>Statut</th><th>Créée le</th><th></th></tr></thead><tbody>
+    @for(item of orders();track item.order.id){<tr><td>{{item.order.orderNumber}}</td>
+     <td>{{customerName(item)}}<br><small>{{item.customer.email}}</small></td><td>{{item.order.menuTitle}}</td>
+     <td>{{item.order.prestationDate|date:'dd/MM/yyyy'}}</td><td>{{item.order.personCount}}</td><td>{{item.order.deliveryCity}}</td>
+     <td>{{item.order.totalAmount|currency:'EUR'}}</td><td><span class="tag">{{label(item.order.status)}}</span></td>
+     <td>{{item.order.createdAt|date:'dd/MM/yyyy HH:mm'}}</td>
+     <td><a class="button secondary small" [routerLink]="['/employe/commandes',item.order.id]">Détail</a></td></tr>}
+    @empty{<tr><td colspan="10">Aucune commande ne correspond aux filtres.</td></tr>}</tbody></table></div>
+   <nav class="pagination" aria-label="Pagination">
+    <button type="button" class="button secondary small" (click)="goTo(0)" [disabled]="first()">Première</button>
+    <button type="button" class="button secondary small" (click)="goTo(page()-1)" [disabled]="first()">Précédente</button>
+    <button type="button" class="button secondary small" (click)="goTo(page()+1)" [disabled]="last()">Suivante</button>
+    <button type="button" class="button secondary small" (click)="goTo(totalPages()-1)" [disabled]="last()">Dernière</button>
+    <label>Résultats par page<select [(ngModel)]="size" (ngModelChange)="sizeChanged($event)">
+     <option [ngValue]="10">10</option><option [ngValue]="20">20</option><option [ngValue]="50">50</option><option [ngValue]="100">100</option>
+    </select></label>
+   </nav>
+  }
+ </section>

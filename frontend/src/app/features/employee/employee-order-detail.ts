@@ -9,58 +9,8 @@ import { OrderService } from '../../core/services/order.service';
 @Component({
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  template: `
-    <section class="container section"><a routerLink="/employe/commandes">← Retour aux commandes</a>
-      @if (loading()) { <p role="status">Chargement de la commande…</p> }
-      @else if (error() && !detail()) { <p class="alert" role="alert">{{error()}}</p> }
-      @else if (detail(); as detail) {
-        <p class="eyebrow">Commande {{detail.summary.order.orderNumber}}</p>
-        <div class="section-heading"><h1>Détail de la commande</h1><span class="tag">{{label(detail.summary.order.status)}}</span></div>
-        <div class="detail-grid">
-          <article class="card"><h2>Client</h2><p>{{detail.summary.customer.firstName}} {{detail.summary.customer.lastName}}</p>
-            <p><a [href]="'mailto:'+detail.summary.customer.email">{{detail.summary.customer.email}}</a></p>
-            @if (detail.summary.customer.phone) { <p><a [href]="'tel:'+detail.summary.customer.phone">{{detail.summary.customer.phone}}</a></p> }
-          </article>
-          <article class="card"><h2>Prestation</h2><p><strong>{{detail.summary.order.menuTitle}}</strong> · {{detail.summary.order.personCount}} personnes</p>
-            <p>{{detail.summary.order.prestationDate | date:'dd/MM/yyyy'}} à {{detail.summary.order.desiredDeliveryTime}}</p>
-            <p>{{detail.summary.order.deliveryAddress}}<br>{{detail.summary.order.deliveryPostalCode}} {{detail.summary.order.deliveryCity}}<br>{{detail.summary.order.deliveryCountry}}</p>
-            <p>Distance : {{detail.summary.order.distanceKm}} km</p><p>Matériel prêté : {{detail.summary.order.equipmentLoaned ? 'Oui' : 'Non'}}</p>
-          </article>
-          <article class="card"><h2>Montants</h2><p>Menu : {{detail.summary.order.menuAmount | currency:'EUR'}}</p>
-            <p>Remise : −{{detail.summary.order.discountAmount | currency:'EUR'}}</p><p>Livraison : {{detail.summary.order.deliveryAmount | currency:'EUR'}}</p>
-            <p class="price">Total : {{detail.summary.order.totalAmount | currency:'EUR'}}</p></article>
-        </div>
-        @if (detail.summary.order.cancellationReason) { <p class="alert"><strong>Motif d’annulation :</strong> {{detail.summary.order.cancellationReason}}</p> }
-        @if (transitions().length) {
-          <section class="card transition-box" aria-labelledby="transition-title"><h2 id="transition-title">Changer le statut</h2>
-            @if (!confirming()) { <div class="actions">@for (status of transitions(); track status) {
-              <button class="button small" type="button" (click)="prepare(status)">{{label(status)}}</button>
-            }</div> } @else {
-              <p>Confirmer le passage à « {{label(confirming())}} » ?</p>
-              <label>Commentaire facultatif<textarea [(ngModel)]="comment" name="comment"></textarea></label>
-              <div class="actions"><button class="button small" type="button" (click)="confirmTransition()" [disabled]="submitting()">Confirmer</button>
-                <button class="button secondary small" type="button" (click)="closeConfirmation()" [disabled]="submitting()">Annuler</button></div>
-            }
-          </section>
-        }
-        @if (message()) { <p class="alert success" aria-live="polite">{{message()}}</p> }
-        @if (error()) { <p class="alert" role="alert">{{error()}}</p> }
-        <section aria-labelledby="history-title"><h2 id="history-title">Historique</h2><ol class="timeline">
-          @for (entry of detail.history; track entry.changedAt) {
-            <li><strong>{{label(entry.previousStatus)}} → {{label(entry.newStatus)}}</strong>
-              <time [attr.datetime]="entry.changedAt">{{entry.changedAt | date:'dd/MM/yyyy HH:mm'}}</time>
-              @if (entry.actor) { <span> · {{entry.actor}}</span> } @if (entry.comment) { <p>{{entry.comment}}</p> }</li>
-          } @empty { <li>Aucun historique disponible.</li> }
-        </ol></section>
-      }
-    </section>
-  `,
-  styles: [`
-    .section-heading,.actions{display:flex;align-items:center;gap:.75rem;justify-content:space-between;flex-wrap:wrap}
-    .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem}
-    .transition-box{margin:1.5rem 0}.transition-box label,.transition-box textarea{display:block;width:100%}
-    .timeline{border-left:2px solid #ccc;padding-left:1.5rem}.timeline li{margin-bottom:1rem}
-  `]
+  templateUrl: './employee-order-detail.html',
+  styleUrl: './employee-order-detail.scss'
 })
 export class EmployeeOrderDetailComponent {
   private readonly api = inject(OrderService);

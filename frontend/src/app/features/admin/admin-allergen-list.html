@@ -1,0 +1,3 @@
+<section class="container section"><div class="section-heading"><h1>Allergènes</h1><div><button class="button secondary small" (click)="load()">Actualiser</button> <a class="button small" routerLink="/admin/allergenes/nouveau">Nouvel allergène</a></div></div>
+<label>Rechercher<input [(ngModel)]="search" name="search"></label>@if(loading()){<p role="status">Chargement…</p>}@else if(error()){<p class="alert" role="alert">{{error()}}</p>}@else{
+<div class="cards">@for(a of filtered();track a.id){<article class="card"><h2>{{a.name}}</h2><p>{{a.dishCount}} plat(s) associé(s)</p><a [routerLink]="['/admin/allergenes',a.id]">Consulter</a> · <a [routerLink]="['/admin/allergenes',a.id,'modifier']">Modifier</a></article>}@empty{<p>Aucun allergène.</p>}</div>}</section>

@@ -4,12 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 @Component({
  standalone: true, selector: 'app-login', imports: [ReactiveFormsModule, RouterLink],
- template: `<section class="form-page"><form class="form-card" [formGroup]="form" (ngSubmit)="submit()"><p class="eyebrow">Bon retour</p><h1>Connexion</h1>
- <label>Adresse e-mail<input type="email" formControlName="email" autocomplete="email"></label>
- <label>Mot de passe<input type="password" formControlName="password" autocomplete="current-password"></label>
- @if (error()) {<p class="alert error" role="alert">{{error()}}</p>}
- <button class="button" [disabled]="form.invalid || loading()">{{loading() ? 'Connexion…' : 'Se connecter'}}</button>
- <p><a routerLink="/mot-de-passe-oublie">Mot de passe oublié ?</a></p><p>Pas encore de compte ? <a routerLink="/inscription">S’inscrire</a></p></form></section>`
+ templateUrl: './login.html'
 })
 export class LoginComponent {
  readonly loading=signal(false); readonly error=signal('');

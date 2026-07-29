@@ -5,16 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 const PASSWORD=/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{10,}$/;
 @Component({
  standalone:true,selector:'app-register',imports:[ReactiveFormsModule,RouterLink],
- template:`<section class="form-page"><form class="form-card wide" [formGroup]="form" (ngSubmit)="submit()"><p class="eyebrow">Votre espace</p><h1>Créer un compte</h1>
- <div class="two"><label>Prénom<input formControlName="firstName" autocomplete="given-name"></label><label>Nom<input formControlName="lastName" autocomplete="family-name"></label>
- <label>Téléphone<input formControlName="phone" autocomplete="tel"></label><label>Adresse e-mail<input type="email" formControlName="email" autocomplete="email"></label>
- <label class="full">Adresse<input formControlName="addressLine" autocomplete="street-address"></label><label>Code postal<input formControlName="postalCode" autocomplete="postal-code"></label>
- <label>Ville<input formControlName="city" autocomplete="address-level2"></label><label>Pays<input formControlName="country" autocomplete="country-name"></label>
- <label>Mot de passe<input type="password" formControlName="password" autocomplete="new-password"><small>10 caractères, majuscule, minuscule, chiffre et caractère spécial.</small></label>
- <label>Confirmation<input type="password" formControlName="confirmation" autocomplete="new-password"></label></div>
- <label class="check"><input type="checkbox" formControlName="termsAccepted"> J’accepte les <a routerLink="/conditions">conditions et la politique de confidentialité</a>.</label>
- @if(form.errors?.['passwordMismatch']&&form.controls.confirmation.touched){<p class="field-error">Les mots de passe diffèrent.</p>}
- @if(error()){<p class="alert error" role="alert">{{error()}}</p>}<button class="button" [disabled]="form.invalid||loading()">Créer mon compte</button></form></section>`
+ templateUrl: './register.html'
 })
 export class RegisterComponent {
  readonly loading=signal(false);readonly error=signal('');

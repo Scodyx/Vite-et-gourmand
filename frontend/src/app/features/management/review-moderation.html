@@ -1,0 +1,9 @@
+<section class="container section"><div class="section-heading"><h1>Modération des avis</h1>
+<button class="button secondary small" type="button" (click)="load()" [disabled]="loading()">Actualiser</button></div>
+@if(loading()){<p role="status">Chargement des avis…</p>}@else if(error()){<p class="alert" role="alert">{{error()}}</p>}
+@else{<div class="cards">@for(r of reviews();track r.id){<article class="card"><h2>{{r.menuTitle}} · {{r.rating}}/5</h2>
+<p>Commande n° {{r.orderId}} · {{r.customerFirstName}} · {{r.createdAt}}</p><p>{{r.comment}}</p><p class="tag">{{r.status}}</p>
+<button class="button small" type="button" [disabled]="processing()===r.id" (click)="moderate(r,'approve')">Approuver</button>
+<button class="button secondary small" type="button" [disabled]="processing()===r.id" (click)="moderate(r,'reject')">Refuser</button></article>}
+@empty{<p>Aucun avis en attente.</p>}</div>}
+@if(message()){<p class="alert" aria-live="polite">{{message()}}</p>}</section>

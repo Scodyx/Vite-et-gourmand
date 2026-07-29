@@ -1,0 +1,12 @@
+<section class="form-page"><form class="form-card wide" [formGroup]="form" (ngSubmit)="submit()">
+<p class="eyebrow">Nouvelle prestation</p><h1>Commander {{menu()?.title}}</h1>
+@if(menu()){<p>Minimum {{menu()!.minimumPersons}} personnes — stock {{menu()!.availableStock}}</p>}
+<div class="two"><label>Nombre de personnes<input type="number" formControlName="personCount"></label>
+<label>Date<input type="date" formControlName="prestationDate"></label><label>Heure<input type="time" formControlName="desiredDeliveryTime"></label>
+<label>Adresse<input formControlName="deliveryAddress"></label><label>Code postal<input formControlName="deliveryPostalCode"></label>
+<label>Ville<input formControlName="deliveryCity"></label><label>Pays<input formControlName="deliveryCountry"></label>
+<label>Distance (km)<input type="number" step=".1" formControlName="distanceKm"></label>
+<label class="check"><input type="checkbox" formControlName="outsideBordeaux"> Hors Bordeaux</label>
+<label class="check"><input type="checkbox" formControlName="equipmentLoaned"> Prêt de matériel</label></div>
+<button class="button" [disabled]="form.invalid||loading()">Confirmer la commande</button>
+@if(message()){<p class="alert">{{message()}}</p>}</form></section>

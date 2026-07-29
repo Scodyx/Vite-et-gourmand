@@ -1,0 +1,1 @@
+<section class="container section">@if(value();as a){<a routerLink="/admin/allergenes">Retour</a><h1>{{a.name}}</h1><p>{{a.dishCount}} plat(s) associé(s)</p><a class="button" [routerLink]="['/admin/allergenes',a.id,'modifier']">Modifier</a>}@else if(error()){<p role="alert">{{error()}}</p>}@else{<p role="status">Chargement…</p>}</section>
