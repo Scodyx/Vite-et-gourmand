@@ -8,7 +8,7 @@ import { Order } from '../../core/models/order';
 import { orderStatusLabel } from '../../core/models/order-status';
 
 @Component({standalone:true,imports:[CommonModule,RouterLink],template:`
-<section class="container section dashboard"><div class="section-heading"><div><p class="eyebrow">Mon compte</p><h1>Tableau de bord</h1></div><a class="button secondary small" routerLink="/menus">Commander</a></div>
+<section class="container section dashboard"><div class="section-heading"><div><p class="eyebrow">Mon compte</p><h1>Tableau de bord</h1></div></div>
 @if(message()){<p class="alert">{{message()}}</p>}
 @if(!loading()){
 <div class="dashboard-summary"><article class="card"><strong>{{orders().length}}</strong><span>commandes au total</span></article>
