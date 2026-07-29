@@ -1,0 +1,4 @@
+<section class="container section"><h1>Horaires d’ouverture</h1>@if(loading()){<p role="status">Chargement…</p>}@else{<form class="form-card wide" (ngSubmit)="save()">
+@for(h of hours();track h.id){<fieldset><legend>{{day(h.dayOfWeek)}}</legend><label class="check"><input type="checkbox" [(ngModel)]="h.closed" name="closed-{{h.id}}" (ngModelChange)="closedChanged(h)">Fermé</label>
+<label>Ouverture<input type="time" [(ngModel)]="h.openingTime" name="open-{{h.id}}" [disabled]="h.closed"></label><label>Fermeture<input type="time" [(ngModel)]="h.closingTime" name="close-{{h.id}}" [disabled]="h.closed"></label></fieldset>}
+<button class="button" [disabled]="saving()">Enregistrer</button></form>}@if(error()){<p class="alert" role="alert">{{error()}}</p>}@if(message()){<p class="alert" aria-live="polite">{{message()}}</p>}</section>

@@ -1,0 +1,8 @@
+<section class="container section">@if(dish();as d){<a routerLink="/admin/plats">Retour aux plats</a><h1>{{d.name}}</h1><p>{{d.description||'Aucune description.'}}</p><p><span class="tag">{{label(d.type)}}</span> <span class="tag">{{d.active?'Actif':'Inactif'}}</span></p>
+<h2>Associations en lecture seule</h2><p>{{d.menuCount}} menu(s) utilise(nt) ce plat.</p><p>Allergènes : @for(a of d.allergens;track a.id){<span class="tag">{{a.name}}</span>}@empty{aucun}</p>
+<a class="button" [routerLink]="['/admin/plats',d.id,'modifier']">Modifier</a> <button class="button secondary" [disabled]="processing()" (click)="toggle()">{{d.active?'Désactiver':'Réactiver'}}</button>
+<section class="card"><h2>Allergènes · {{selected.size}}</h2><label>Rechercher<input [(ngModel)]="search" name="allergenSearch"></label>
+@if(associationsLoading()){<p role="status">Chargement…</p>}@else{<div class="cards">@for(a of filtered();track a.id){<label class="card check"><input type="checkbox" [checked]="selected.has(a.id)" (change)="select(a.id,a.name,$event)">{{a.name}}</label>}@empty{<p>Aucun allergène.</p>}</div>
+<button class="button" [disabled]="saving()||!changed()" (click)="save()">Enregistrer les allergènes</button> <button class="button secondary" [disabled]="saving()||!changed()" (click)="cancel()">Annuler</button>}
+@if(message()){<p class="alert" aria-live="polite">{{message()}}</p>}</section>
+}@else if(error()){<p class="alert" role="alert">{{error()}}</p>}@else{<p role="status">Chargement…</p>}</section>

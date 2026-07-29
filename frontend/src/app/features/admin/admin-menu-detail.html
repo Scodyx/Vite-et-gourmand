@@ -1,0 +1,12 @@
+<section class="container section">@if(menu();as m){<a routerLink="/admin/menus">Retour aux menus</a><h1>{{m.title}}</h1>@if(m.imageUrl){<img [src]="m.imageUrl" [alt]="'Présentation de '+m.title" (error)="imageError($event)">}
+<p>{{m.description}}</p><dl><dt>Prix</dt><dd>{{m.basePrice|currency:'EUR'}}</dd><dt>Minimum</dt><dd>{{m.minimumPersons}} personnes</dd><dt>Stock</dt><dd>{{m.availableStock}} personnes</dd><dt>État</dt><dd>{{m.active?'Actif':'Inactif'}}</dd></dl>
+<a class="button" [routerLink]="['/admin/menus',m.id,'modifier']">Modifier</a> <button class="button secondary" [disabled]="processing()" (click)="toggle()">{{m.active?'Désactiver':'Réactiver'}}</button>
+<section class="card"><div class="section-heading"><h2>Composition · {{selected.size}} plat(s)</h2><button class="button secondary small" type="button" (click)="loadDishes()">Actualiser</button></div>
+<div class="two"><label>Rechercher<input [(ngModel)]="dishSearch" name="dishSearch"></label><label>Type<select [(ngModel)]="dishType" name="dishType"><option value="">Tous</option><option value="ENTRY">Entrée</option><option value="MAIN_COURSE">Plat principal</option><option value="DESSERT">Dessert</option></select></label></div>
+@if(dishesLoading()){<p role="status">Chargement des plats…</p>}@else{
+<div class="cards">@for(d of filteredDishes();track d.id){<label class="card check"><input type="checkbox" [checked]="selected.has(d.id)" [disabled]="!d.active&&!selected.has(d.id)" (change)="select(d,$event)">
+<strong>{{d.name}}</strong> <span class="tag">{{typeLabel(d.type)}}</span> <span class="tag">{{d.active?'Actif':'Inactif'}}</span></label>}@empty{<p>Aucun plat correspondant.</p>}</div>
+<button class="button" type="button" [disabled]="associationSaving()||!changed()" (click)="saveDishes()">Enregistrer la composition</button>
+<button class="button secondary" type="button" [disabled]="associationSaving()||!changed()" (click)="cancelDishes()">Annuler les changements</button>}
+@if(associationMessage()){<p class="alert" aria-live="polite">{{associationMessage()}}</p>}</section>
+}@else if(error()){<p class="alert" role="alert">{{error()}}</p>}@else{<p role="status">Chargement…</p>}</section>

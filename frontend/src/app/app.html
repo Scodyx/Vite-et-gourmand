@@ -1,0 +1,67 @@
+<a class="skip-link" href="#main-content">Aller au contenu</a>
+<header class="site-header">
+  <nav class="container nav" aria-label="Navigation principale">
+    <a routerLink="/" class="brand" (click)="closeNavigation()">Vite <span>&amp;</span> Gourmand</a>
+    <button class="nav-toggle" type="button" aria-label="Ouvrir ou fermer la navigation"
+      aria-controls="primary-navigation" [attr.aria-expanded]="navigationOpen()" (click)="toggleNavigation()">
+      <span aria-hidden="true">☰</span><span>Menu</span>
+    </button>
+    <div id="primary-navigation" class="nav-links" [class.open]="navigationOpen()">
+      <div class="nav-group" aria-label="Navigation publique">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" (click)="closeNavigation()">Accueil</a>
+        <a routerLink="/menus" routerLinkActive="active" (click)="closeNavigation()">Menus</a>
+        <a routerLink="/contact" routerLinkActive="active" (click)="closeNavigation()">Contact</a>
+        <a class="button small nav-order" routerLink="/menus" (click)="closeNavigation()">Commander</a>
+      </div>
+      @if(!auth.isAuthenticated()){
+        <div class="nav-group nav-account">
+          <a routerLink="/connexion" routerLinkActive="active" (click)="closeNavigation()">Connexion</a>
+          <a class="button small" routerLink="/inscription" (click)="closeNavigation()">Inscription</a>
+        </div>
+      } @else {
+        <div class="nav-group nav-account">
+          @if(auth.hasRole(['USER'])){
+            <a routerLink="/espace" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" (click)="closeNavigation()">Tableau de bord</a>
+            <a routerLink="/espace" fragment="orders" routerLinkActive="active" (click)="closeNavigation()">Mes commandes</a>
+            <a routerLink="/profil" routerLinkActive="active" (click)="closeNavigation()">Mon profil</a>
+          }
+          @if(auth.hasRole(['EMPLOYEE','ADMIN'])){
+            <a routerLink="/employe" routerLinkActive="active" (click)="closeNavigation()">Espace équipe</a>
+          }
+          @if(auth.hasRole(['ADMIN'])){
+            <div class="admin-menu" routerLinkActive="active-section">
+              <button class="admin-menu-trigger" type="button" aria-haspopup="menu"
+                aria-controls="administration-navigation" [attr.aria-expanded]="administrationOpen()"
+                (click)="toggleAdministration()">Administration<span class="admin-chevron" aria-hidden="true">⌄</span></button>
+              <div id="administration-navigation" class="admin-menu-panel" role="menu" [class.open]="administrationOpen()">
+                <a role="menuitem" routerLink="/admin" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" (click)="closeNavigation()">Tableau de bord</a>
+                <div class="admin-menu-section" role="group" aria-label="Gestion du catalogue">
+                  <span>Gestion du catalogue</span>
+                  <a role="menuitem" routerLink="/employe/catalogue" routerLinkActive="active" (click)="closeNavigation()">Catalogue</a>
+                  <a role="menuitem" routerLink="/admin/menus" routerLinkActive="active" (click)="closeNavigation()">Menus</a>
+                  <a role="menuitem" routerLink="/admin/plats" routerLinkActive="active" (click)="closeNavigation()">Plats</a>
+                  <a role="menuitem" routerLink="/admin/allergenes" routerLinkActive="active" (click)="closeNavigation()">Allergènes</a>
+                </div>
+                <div class="admin-menu-section" role="group" aria-label="Gestion de l’activité">
+                  <span>Gestion de l’activité</span>
+                  <a role="menuitem" routerLink="/admin/employes" routerLinkActive="active" (click)="closeNavigation()">Employés</a>
+                  <a role="menuitem" routerLink="/admin/horaires" routerLinkActive="active" (click)="closeNavigation()">Horaires</a>
+                  <a role="menuitem" routerLink="/employe/avis" routerLinkActive="active" (click)="closeNavigation()">Avis</a>
+                  <a role="menuitem" routerLink="/admin/statistiques" routerLinkActive="active" (click)="closeNavigation()">Statistiques</a>
+                </div>
+              </div>
+            </div>
+          }
+          <button class="link-button" (click)="closeNavigation();auth.logout()">Déconnexion</button>
+        </div>
+      }
+    </div>
+  </nav>
+</header>
+<main id="main-content"><router-outlet /></main>
+<footer class="site-footer"><div class="container footer-grid">
+<div><strong>Vite &amp; Gourmand</strong><p>Traiteur événementiel à Bordeaux</p><p class="footer-contact">contact@vite-gourmand.example · 05 00 00 00 00</p></div>
+<div><strong>Horaires</strong>@for(item of hours();track item.id){<div>{{day(item.dayOfWeek)}} : {{item.closed?'fermé':item.openingTime?.slice(0,5)+'–'+item.closingTime?.slice(0,5)}}</div>}
+@empty{<p>Horaires momentanément indisponibles.</p>}</div>
+<nav aria-label="Liens légaux"><a routerLink="/mentions-legales">Mentions légales</a><br><a routerLink="/conditions">CGV et confidentialité</a></nav>
+</div></footer>

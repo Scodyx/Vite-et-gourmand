@@ -1,0 +1,3 @@
+<section class="container section"><h1>Statistiques</h1><button class="button" (click)="rebuild()">Reconstruire depuis PostgreSQL</button>
+<div class="cards">@for(s of stats();track s.menuId+'-'+s.date){<article class="card"><h2>{{s.menuTitle}}</h2><p>{{s.date}}</p><p>{{s.orderCount}} commande(s)</p><p class="price">{{s.totalRevenue}} €</p></article>}
+@empty{<p>Aucune statistique. Lancez une reconstruction.</p>}</div></section>

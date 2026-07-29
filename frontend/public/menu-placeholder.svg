@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="title">
+  <title id="title">Image de menu indisponible</title>
+  <rect width="640" height="360" fill="#f0ebe2"/>
+  <path d="M230 180h180M320 90v180" stroke="#8b5e3c" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="320" cy="180" r="120" fill="none" stroke="#8b5e3c" stroke-width="12"/>
+</svg>

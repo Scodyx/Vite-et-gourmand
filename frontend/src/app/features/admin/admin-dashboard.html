@@ -1,0 +1,8 @@
+<section class="container section"><div class="section-heading"><div><p class="eyebrow">Administration</p><h1>Tableau de bord</h1></div><button class="button secondary small" (click)="load()" [disabled]="loading()">Actualiser</button></div>
+@if(loading()){<p role="status">Chargement…</p>}@else if(error()){<p class="alert" role="alert">{{error()}}</p>}@else{
+<div class="dashboard-summary"><article class="card"><strong>{{revenue()?.totalRevenue||0|currency:'EUR':'symbol':'1.2-2':'fr'}}</strong><span>chiffre d’affaires</span></article>
+<article class="card"><strong>{{totalOrders()}}</strong><span>commandes au total</span></article><article class="card"><strong>{{pendingOrders()}}</strong><span>en attente</span></article>
+<article class="card"><strong>{{completedOrders()}}</strong><span>terminées</span></article><article class="card"><strong>{{cancelledOrders()}}</strong><span>annulées</span></article>
+<article class="card"><strong>{{activeEmployees()}} / {{disabledEmployees()}}</strong><span>employés actifs / désactivés</span></article><article class="card"><strong>{{pendingReviews()}}</strong><span>avis à modérer</span></article></div>
+<nav class="card quick-links" aria-label="Accès rapides"><a routerLink="/admin/employes">Employés</a><a routerLink="/admin/horaires">Horaires</a><a routerLink="/admin/statistiques">Statistiques</a></nav>
+<h2>Commandes récentes</h2><div class="cards">@for(item of orders().slice(0,5);track item.order.id){<article class="card"><h3>{{item.order.orderNumber}}</h3><p>{{item.customer.firstName}} {{item.customer.lastName}} · {{item.order.menuTitle}}</p><p class="tag">{{label(item.order.status)}}</p></article>}@empty{<p>Aucune commande.</p>}</div>}</section>

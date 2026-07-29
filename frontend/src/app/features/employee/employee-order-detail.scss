@@ -1,0 +1,4 @@
+    .section-heading,.actions{display:flex;align-items:center;gap:.75rem;justify-content:space-between;flex-wrap:wrap}
+    .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem}
+    .transition-box{margin:1.5rem 0}.transition-box label,.transition-box textarea{display:block;width:100%}
+    .timeline{border-left:2px solid #ccc;padding-left:1.5rem}.timeline li{margin-bottom:1rem}

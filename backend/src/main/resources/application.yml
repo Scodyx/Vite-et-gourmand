@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: vite-et-gourmand-api
+  profiles:
+    default: dev
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/vite_et_gourmand}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:change-me}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/vite_et_gourmand_statistics}
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLE:false}
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:4200}
+  contact-email: ${CONTACT_EMAIL:contact@vite-gourmand.example}
+  cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  mail:
+    from: ${MAIL_FROM:no-reply@vite-gourmand.example}
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-change-me-at-least-32-characters}
+    access-expiration: ${JWT_ACCESS_EXPIRATION:900000}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+  bootstrap-admin:
+    enabled: ${INITIAL_ADMIN_ENABLED:false}
+    email: ${INITIAL_ADMIN_EMAIL:}
+    password: ${INITIAL_ADMIN_PASSWORD:}
+    first-name: ${INITIAL_ADMIN_FIRST_NAME:Admin}
+    last-name: ${INITIAL_ADMIN_LAST_NAME:Local}
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+server:
+  error:
+    include-message: never
