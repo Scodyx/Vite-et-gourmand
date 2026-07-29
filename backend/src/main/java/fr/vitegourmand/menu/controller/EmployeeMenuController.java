@@ -2,29 +2,38 @@ package fr.vitegourmand.menu.controller;
 
 import fr.vitegourmand.common.exception.BusinessException;
 import fr.vitegourmand.common.exception.NotFoundException;
-import fr.vitegourmand.menu.entity.Menu;
-import fr.vitegourmand.menu.entity.MenuImage;
-import fr.vitegourmand.menu.repository.MenuRepository;
 import fr.vitegourmand.dish.entity.Dish;
 import fr.vitegourmand.dish.entity.DishType;
 import fr.vitegourmand.dish.repository.DishRepository;
+import fr.vitegourmand.menu.entity.Menu;
+import fr.vitegourmand.menu.entity.MenuImage;
+import fr.vitegourmand.menu.repository.MenuRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.hibernate.validator.constraints.URL;
-import org.springframework.http.HttpStatus;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
-
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.Instant;
-import java.util.List;
-import java.util.Locale;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import org.hibernate.validator.constraints.URL;
+import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/menus")
@@ -47,16 +56,28 @@ public class EmployeeMenuController {
             boolean active,
             @NotBlank String theme,
             @NotBlank String diet,
-            @URL String imageUrl
-    ) {}
+            @URL String imageUrl) {}
 
     public record View(
-            Long id, String title, String slug, String description, String conditions,
-            int minimumPersons, BigDecimal basePrice, int availableStock, boolean active,
-            String theme, String diet, String imageUrl, Instant updatedAt
-    ) {}
+            Long id,
+            String title,
+            String slug,
+            String description,
+            String conditions,
+            int minimumPersons,
+            BigDecimal basePrice,
+            int availableStock,
+            boolean active,
+            String theme,
+            String diet,
+            String imageUrl,
+            Instant updatedAt) {}
+
     public record DishItem(Long id, String name, DishType type, boolean active) {}
-    public record DishesView(Long menuId, String title, boolean active, List<DishItem> dishes, int dishCount) {}
+
+    public record DishesView(
+            Long menuId, String title, boolean active, List<DishItem> dishes, int dishCount) {}
+
     public record DishIds(@NotNull List<@NotNull Long> dishIds) {}
 
     @GetMapping
@@ -112,7 +133,8 @@ public class EmployeeMenuController {
         var menu = menu(id);
         var dish = dish(dishId);
         if (!dish.isActive()) throw new BusinessException("Un plat inactif ne peut pas être ajouté");
-        if (!menu.getDishes().add(dish)) throw new BusinessException("Ce plat est déjà associé au menu");
+        if (!menu.getDishes().add(dish))
+            throw new BusinessException("Ce plat est déjà associé au menu");
         menu.touch();
         return dishesView(menu);
     }
@@ -137,7 +159,8 @@ public class EmployeeMenuController {
     DishesView removeDish(@PathVariable Long id, @PathVariable Long dishId) {
         var menu = menu(id);
         var dish = dish(dishId);
-        if (!menu.getDishes().remove(dish)) throw new BusinessException("Ce plat n'est pas associé au menu");
+        if (!menu.getDishes().remove(dish))
+            throw new BusinessException("Ce plat n'est pas associé au menu");
         menu.touch();
         return dishesView(menu);
     }
@@ -151,10 +174,13 @@ public class EmployeeMenuController {
     }
 
     private DishesView dishesView(Menu menu) {
-        var values = menu.getDishes().stream()
-                .sorted(Comparator.comparing(Dish::getType).thenComparing(Dish::getName))
-                .map(value -> new DishItem(value.getId(), value.getName(), value.getType(), value.isActive()))
-                .toList();
+        var values =
+                menu.getDishes().stream()
+                        .sorted(Comparator.comparing(Dish::getType).thenComparing(Dish::getName))
+                        .map(
+                                value ->
+                                        new DishItem(value.getId(), value.getName(), value.getType(), value.isActive()))
+                        .toList();
         return new DishesView(menu.getId(), menu.getTitle(), menu.isActive(), values, values.size());
     }
 
@@ -178,26 +204,37 @@ public class EmployeeMenuController {
             menu.getImages().clear();
             return;
         }
-        MenuImage image = menu.getImages().stream().findFirst().orElseGet(() -> {
-            var created = new MenuImage();
-            created.setMenu(menu);
-            created.setDisplayOrder(1);
-            menu.getImages().add(created);
-            return created;
-        });
+        MenuImage image =
+                menu.getImages().stream()
+                        .findFirst()
+                        .orElseGet(
+                                () -> {
+                                    var created = new MenuImage();
+                                    created.setMenu(menu);
+                                    created.setDisplayOrder(1);
+                                    menu.getImages().add(created);
+                                    return created;
+                                });
         image.setImageUrl(url);
         image.setAltText("Présentation de " + menu.getTitle());
     }
 
     private void ensureUniqueTitle(String title, Long id) {
-        menus.findByTitleIgnoreCase(title.trim())
+        menus
+                .findByTitleIgnoreCase(title.trim())
                 .filter(other -> !other.getId().equals(id))
-                .ifPresent(other -> { throw new BusinessException("Ce nom de menu existe déjà"); });
+                .ifPresent(
+                        other -> {
+                            throw new BusinessException("Ce nom de menu existe déjà");
+                        });
     }
 
     private String uniqueSlug(String title) {
-        String base = Normalizer.normalize(title.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "").replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
+        String base =
+                Normalizer.normalize(title.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}", "")
+                        .replaceAll("[^a-z0-9]+", "-")
+                        .replaceAll("(^-|-$)", "");
         String candidate = base;
         int suffix = 2;
         while (menus.findBySlug(candidate).isPresent()) candidate = base + "-" + suffix++;
@@ -206,9 +243,19 @@ public class EmployeeMenuController {
 
     private View view(Menu menu) {
         String image = menu.getImages().stream().findFirst().map(MenuImage::getImageUrl).orElse(null);
-        return new View(menu.getId(), menu.getTitle(), menu.getSlug(), menu.getDescription(),
-                menu.getConditions(), menu.getMinimumPersons(), menu.getBasePrice(),
-                menu.getAvailableStock(), menu.isActive(), menu.getTheme(), menu.getDiet(),
-                image, menu.getUpdatedAt());
+        return new View(
+                menu.getId(),
+                menu.getTitle(),
+                menu.getSlug(),
+                menu.getDescription(),
+                menu.getConditions(),
+                menu.getMinimumPersons(),
+                menu.getBasePrice(),
+                menu.getAvailableStock(),
+                menu.isActive(),
+                menu.getTheme(),
+                menu.getDiet(),
+                image,
+                menu.getUpdatedAt());
     }
 }
