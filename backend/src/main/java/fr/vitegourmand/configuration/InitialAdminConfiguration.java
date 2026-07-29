@@ -2,13 +2,12 @@ package fr.vitegourmand.configuration;
 
 import fr.vitegourmand.user.entity.User;
 import fr.vitegourmand.user.repository.UserRepository;
+import java.util.Locale;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
-import java.util.Locale;
 
 @Configuration
 public class InitialAdminConfiguration {
@@ -21,8 +20,7 @@ public class InitialAdminConfiguration {
             @Value("${app.bootstrap-admin.email}") String email,
             @Value("${app.bootstrap-admin.password}") String password,
             @Value("${app.bootstrap-admin.first-name}") String firstName,
-            @Value("${app.bootstrap-admin.last-name}") String lastName
-    ) {
+            @Value("${app.bootstrap-admin.last-name}") String lastName) {
         return args -> {
             String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
             if (!enabled
