@@ -1,0 +1,6 @@
+<section class="container section"><h1>Employés</h1>
+<form class="form-card wide" (ngSubmit)="create()"><div class="two"><label>Prénom<input [(ngModel)]="form.firstName" name="firstName" required></label>
+<label>Nom<input [(ngModel)]="form.lastName" name="lastName" required></label><label>E-mail<input type="email" [(ngModel)]="form.email" name="email" required></label>
+<label>Mot de passe temporaire<input type="password" [(ngModel)]="form.temporaryPassword" name="password" required minlength="12"></label></div><button class="button">Créer</button></form>
+<div class="cards">@for(e of employees();track e.id){<article class="card"><h2>{{e.firstName}} {{e.lastName}}</h2><p>{{e.email}}</p>
+<button class="button secondary small" (click)="toggle(e)">{{e.enabled?'Désactiver':'Activer'}}</button></article>}</div></section>

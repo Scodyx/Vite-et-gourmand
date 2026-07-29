@@ -1,0 +1,4 @@
+.section-heading,.filters,.pagination{display:flex;gap:1rem;align-items:end;justify-content:space-between;flex-wrap:wrap}
+ .filters{margin:1rem 0}.filters label{min-width:9rem;flex:1}.table-scroll{overflow-x:auto}
+ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:.75rem;border-bottom:1px solid #ddd;vertical-align:top}
+ .pagination{justify-content:center;margin-top:1rem;align-items:center}

@@ -1,0 +1,7 @@
+<section class="container section"><div class="section-heading"><h1>Menus</h1><div><button class="button secondary small" (click)="load()">Actualiser</button> <a class="button small" routerLink="/admin/menus/nouveau">Nouveau menu</a></div></div>
+<div class="two"><label>Rechercher<input [(ngModel)]="search" name="search"></label><label>État<select [(ngModel)]="activeFilter" name="active"><option value="">Tous</option><option value="true">Actifs</option><option value="false">Inactifs</option></select></label>
+<label>Trier<select [(ngModel)]="sort" name="sort"><option value="title">Nom</option><option value="basePrice">Prix</option><option value="availableStock">Stock</option></select></label></div>
+@if(loading()){<p role="status">Chargement…</p>}@else if(error()){<p class="alert" role="alert">{{error()}}</p>}@else{
+<div class="cards">@for(m of filtered();track m.id){<article class="card">@if(m.imageUrl){<img [src]="m.imageUrl" [alt]="'Présentation de '+m.title" (error)="imageError($event)">}<h2>{{m.title}}</h2>
+<p class="price">{{m.basePrice|currency:'EUR'}}</p><p>Minimum {{m.minimumPersons}} personnes · Stock disponible : {{m.availableStock}} personnes</p><span class="tag">{{m.active?'Actif':'Inactif'}}</span>
+<p>Mis à jour le {{m.updatedAt|date:'dd/MM/yyyy HH:mm'}}</p><a [routerLink]="['/admin/menus',m.id]">Consulter</a> · <a [routerLink]="['/admin/menus',m.id,'modifier']">Modifier</a></article>}@empty{<p>Aucun menu.</p>}</div>}</section>

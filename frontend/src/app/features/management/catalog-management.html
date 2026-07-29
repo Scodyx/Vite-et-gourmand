@@ -1,0 +1,3 @@
+<section class="container section"><h1>Plats et allergènes</h1>
+<div class="card"><h2>Allergènes</h2>@for(a of allergens();track a.id){<span class="tag">{{a.name}} </span>}@empty{<p>Aucun allergène.</p>}</div>
+<div class="cards">@for(d of dishes();track d.id){<article class="card"><h2>{{d.name}}</h2><p>{{d.description}}</p><span class="tag">{{d.type}}</span></article>}</div></section>

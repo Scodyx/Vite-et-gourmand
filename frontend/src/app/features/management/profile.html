@@ -1,0 +1,6 @@
+<section class="container section"><h1>Mon profil</h1>
+@if(profile();as p){<form class="form-card wide" (ngSubmit)="save()"><div class="two"><label>Prénom<input [(ngModel)]="p.firstName" name="firstName" required></label>
+<label>Nom<input [(ngModel)]="p.lastName" name="lastName" required></label><label>Téléphone<input [(ngModel)]="p.phone" name="phone"></label>
+<label>Adresse<input [(ngModel)]="p.addressLine" name="addressLine" required></label><label>Code postal<input [(ngModel)]="p.postalCode" name="postalCode" required></label>
+<label>Ville<input [(ngModel)]="p.city" name="city" required></label><label>Pays<input [(ngModel)]="p.country" name="country" required></label></div>
+<button class="button" [disabled]="loading()">Enregistrer</button>@if(message()){<p class="alert" aria-live="polite">{{message()}}</p>}</form>}</section>

@@ -1,0 +1,10 @@
+<section class="container section"><div class="section-heading"><h1>Gestion des employés</h1><button class="button secondary small" (click)="load()">Actualiser</button></div>
+<form class="form-card wide" (ngSubmit)="create()" #employeeForm="ngForm"><h2>Créer un employé</h2><div class="two">
+<label>Prénom<input [(ngModel)]="form.firstName" name="firstName" required></label><label>Nom<input [(ngModel)]="form.lastName" name="lastName" required></label>
+<label>E-mail<input type="email" [(ngModel)]="form.email" name="email" required></label><label>Mot de passe initial<input type="password" [(ngModel)]="form.temporaryPassword" name="password" required minlength="12"></label>
+<label>Confirmation<input type="password" [(ngModel)]="confirmation" name="confirmation" required></label></div>
+@if(passwordError()){<p class="alert" role="alert">{{passwordError()}}</p>}<button class="button" [disabled]="employeeForm.invalid||submitting()">Créer l’employé</button></form>
+<div class="two"><label>Rechercher<input [(ngModel)]="search" name="search"></label><label>État<select [(ngModel)]="enabledFilter" name="enabledFilter"><option value="">Tous</option><option value="true">Actifs</option><option value="false">Désactivés</option></select></label></div>
+@if(error()){<p class="alert" role="alert">{{error()}}</p>}@if(message()){<p class="alert" aria-live="polite">{{message()}}</p>}
+<div class="cards">@for(e of filtered();track e.id){<article class="card"><h2>{{e.firstName}} {{e.lastName}}</h2><p>{{e.email}}</p><p>{{e.role}} · Créé le {{e.createdAt|date:'dd/MM/yyyy'}}</p>
+<span class="tag">{{e.enabled?'Actif':'Désactivé'}}</span><button class="button secondary small" [disabled]="processing()===e.id" (click)="toggle(e)">{{e.enabled?'Désactiver':'Réactiver'}}</button></article>}@empty{<p>Aucun employé ne correspond aux critères.</p>}</div></section>
